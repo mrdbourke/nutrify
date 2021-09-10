@@ -1,5 +1,8 @@
 import uuid
+import streamlit as st
+import os
 from google.cloud import storage
+
 
 ### Uploader function to Google Storage ###
 # Bucket ID for Google Storage upload
@@ -14,7 +17,8 @@ def upload_blob(source_file_name, destination_blob_name):
     # ID of GCS object to store
     print("Starting to try and upload...")
 
-    storage_client = storage.Client()
+    # Authenticate storage, see: https://cloud.google.com/docs/authentication/production#passing_code 
+    storage_client = storage.Client.from_service_account_info(st.secrets["GOOGLE_APPLICATION_CREDENTIALS"])
     bucket = storage_client.bucket(bucket_name=BUCKET_ID)
     blob = bucket.blob(destination_blob_name)
 
