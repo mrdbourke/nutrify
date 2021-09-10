@@ -1,6 +1,6 @@
-# from pprint import pprint
+import streamlit as st
 from typing import List
-from oauth2client.service_account import ServiceAccountCredentials
+from google.oauth2 import service_account
 from googleapiclient import discovery
 
 # Authorize the service to add rows to Google Sheets
@@ -9,7 +9,10 @@ scope = ["https://spreadsheets.google.com/feeds",
          "https://www.googleapis.com/auth/drive.file",
          "https://www.googleapis.com/auth/drive"]
 
-credentials = ServiceAccountCredentials.from_json_keyfile_name("google-drive-creds.json", scope)
+credentials = service_account.Credentials.from_service_account_info(
+    st.secrets["gcp_service_account"], # read credentials from st.secrets, see: https://docs.streamlit.io/en/stable/tutorial/private_gsheet.html 
+    scopes=scope
+)
 service = discovery.build('sheets', 'v4', credentials=credentials)
 
 # The ID of the spreadsheet to update.
