@@ -8,7 +8,7 @@ from rich import pretty, print, traceback
 pretty.install()
 traceback.install()
 
-st.title("Food Vision Image Collection 🍔👁")
+st.title("Nutrify Image Collection 🍔👁")
 st.write("Upload or take a photo of your food and help build the world's biggest food image database!")
 
 uploaded_image = st.file_uploader(label="Upload an image of food",
