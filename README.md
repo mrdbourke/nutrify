@@ -1,10 +1,21 @@
 # Nutrify - take a photo of food and learn about it
 
+
+## How to run locally
+
+To run this locally, it is as simple as
+
+```
+pipenv run streamlit run foot_image_collector.py
+```
+TODO: Can make this into a shell script
+TODO: have a main.py
+
 Work in progress.
 
 To make this a thing, we're going to need lots of food images...
 
-Start uploading your food images here: https://share.streamlit.io/mrdbourke/nutrify/main/food_image_collector.py 
+Start uploading your food images here: https://share.streamlit.io/mrdbourke/nutrify/main/food_image_collector.py
 
 Streaming progress on [Twitch](https://www.twitch.tv/mrdbourke)/making videos about it on YouTube.
 
