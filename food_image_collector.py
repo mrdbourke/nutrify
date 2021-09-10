@@ -30,9 +30,10 @@ form = st.form(key="label_submit_form", clear_on_submit=True)
 label = form.text_input(label="What food(s) are in the image you uploaded? \
     You can enter text like: 'ramen' or 'eggs, bread, bacon'",
     max_chars=200)
-st.write("If you click upload image, your image will be stored on \
+st.markdown('**Note:** If you click "upload image", your image will be stored on \
           Nutrify servers and used to create the largest food image database \
-          in the world!")
+          in the world! *(Do not upload anything sensitive, as it may one day \
+              become publicly available)*')
 submit_button = form.form_submit_button(label="Upload image",
     help="Click to upload your image and label to Nutrify servers"
 )
@@ -58,3 +59,5 @@ if submit_button:
     # Output details
     print(response)
     print(image)
+
+st.markdown("View the source code for this page on [GitHub](https://github.com/mrdbourke/nutrify).")
