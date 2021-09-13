@@ -28,8 +28,6 @@ def display_image(img):
 
 image = display_image(uploaded_image)
 
-st.write("# TESTING VERSION!")
-
 # Create image label form to submit
 st.write("## Image details")
 form = st.form(key="label_submit_form", clear_on_submit=True)
