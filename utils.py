@@ -5,7 +5,10 @@ from google.cloud import storage
 
 ### Uploader function to Google Storage ###
 # Bucket ID for Google Storage upload
-BUCKET_ID = "food-vision-images-test-upload"
+if os.environ("TEST_NUTRIFY_ENV_VAR"):
+    BUCKET_ID = "food-vision-images-test-upload" # test bucket
+else:
+    BUCKET_ID = "food-vision-images" # prod bucket
 
 def upload_blob(source_file_name, destination_blob_name):
     """
