@@ -5,7 +5,8 @@ from google.cloud import storage
 
 ### Uploader function to Google Storage ###
 # Bucket ID for Google Storage upload
-if os.environ("TEST_NUTRIFY_ENV_VAR"):
+if os.environ.get("TEST_NUTRIFY_ENV_VAR"):
+    print("***Using test storage bucket***")
     BUCKET_ID = "food-vision-images-test-upload" # test bucket
 else:
     BUCKET_ID = "food-vision-images" # prod bucket
