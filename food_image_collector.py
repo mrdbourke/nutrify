@@ -2,9 +2,11 @@ import streamlit as st
 import datetime
 
 from PIL import Image
+
 from save_to_gsheets import append_values_to_gsheet
 from utils import create_unique_filename, upload_blob
-from rich import pretty, print, traceback 
+from rich import pretty, print, traceback
+
 pretty.install()
 traceback.install()
 
@@ -25,6 +27,8 @@ def display_image(img):
     return img
 
 image = display_image(uploaded_image)
+
+st.write("# TESTING VERSION!")
 
 # Create image label form to submit
 st.write("## Image details")
