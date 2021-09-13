@@ -2,6 +2,14 @@ import streamlit as st
 from typing import List
 from google.oauth2 import service_account
 from googleapiclient import discovery
+import os
+
+# Check to see if developing locally (this changes where images are stored)
+if os.environ.get("TEST_NUTRIFY_ENV_VAR"):
+    print("***Using testing database***")
+    SPREADSHEET_ID = "1fdEeFZkr7pNIM-C2vSCe9JVVaUnOL5ZfJ5I8c860VoE" # test database
+else:
+    SPREADSHEET_ID = "1CLpDSzJd1mAmG0jHfwGyFG6teRE0ayZrjE8gRVpnrZE" # prod database
 
 # Authorize the service to add rows to Google Sheets
 scope = ["https://spreadsheets.google.com/feeds",
@@ -14,9 +22,6 @@ credentials = service_account.Credentials.from_service_account_info(
     scopes=scope
 )
 service = discovery.build('sheets', 'v4', credentials=credentials)
-
-# The ID of the spreadsheet to update.
-SPREADSHEET_ID = "1CLpDSzJd1mAmG0jHfwGyFG6teRE0ayZrjE8gRVpnrZE" 
 
 # The A1 notation of a range to search for a logical table of data.
 # Values will be appended after the last row of the table.

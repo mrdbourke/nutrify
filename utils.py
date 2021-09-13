@@ -3,10 +3,13 @@ import streamlit as st
 import os
 from google.cloud import storage
 
-
 ### Uploader function to Google Storage ###
 # Bucket ID for Google Storage upload
-BUCKET_ID = "food-vision-images"
+if os.environ.get("TEST_NUTRIFY_ENV_VAR"):
+    print("***Using test storage bucket***")
+    BUCKET_ID = "food-vision-images-test-upload" # test bucket
+else:
+    BUCKET_ID = "food-vision-images" # prod bucket
 
 def upload_blob(source_file_name, destination_blob_name):
     """

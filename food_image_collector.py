@@ -2,9 +2,11 @@ import streamlit as st
 import datetime
 
 from PIL import Image
+
 from save_to_gsheets import append_values_to_gsheet
 from utils import create_unique_filename, upload_blob
-from rich import pretty, print, traceback 
+from rich import pretty, print, traceback
+
 pretty.install()
 traceback.install()
 
