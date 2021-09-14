@@ -12,7 +12,8 @@ traceback.install()
 
 st.title("Nutrify Image Collection 🍔👁")
 st.write(
-    "Upload or take a photo of your food and help build the world's biggest food image database!"
+    "Upload or take a photo of your food and help build the world's biggest \
+        food image database!"
 )
 
 uploaded_image = st.file_uploader(
@@ -46,26 +47,29 @@ with st.form(key="image_metadata_submit_form", clear_on_submit=True):
 
     # Image upload location
     country = st.text_input(
-        label="Where are you uploading this delicious-looking food image from?",
+        label="Where are you uploading this delicious-looking food image \
+            from?",
         value="US",
         autocomplete="country",
     )
     st.caption(
-        "Country level is fine, for example 'AU' for Australia or 'IND' for India"
+        "Country level is fine, for example 'AU' for Australia or 'IND' \
+            for India"
     )
 
     # Person email
     email = st.text_input(
-        label="What's your email? (optional, we'll use this to contact you about the app/say thank you for your image(s))",
+        label="What's your email? (optional, we'll use this to contact you \
+            about the app/say thank you for your image(s))",
         autocomplete="email",
     )
 
     # Disclaimer
     st.info(
         '**Note:** If you click "upload image", your image will be stored on \
-            Nutrify servers and used to create the largest food image database \
-            in the world! *(Do not upload anything sensitive, as it may one day \
-                become publicly available)*'
+            Nutrify servers and used to create the largest food image database\
+            in the world! *(Do not upload anything sensitive, as it may one \
+                day become publicly available)*'
     )
 
     # Submit button + logic
@@ -120,26 +124,32 @@ st.write("## FAQ")
 with st.expander("What happens to my image?"):
     st.write(
         """
-    When you click "upload image", your image gets stored on Nutrify servers (a big hard drive on Google Cloud).\n
+    When you click "upload image", your image gets stored on Nutrify servers\
+         (a big hard drive on Google Cloud).\n
     Here's a pretty picture which describes it in more detail:
     """
     )
     st.image("./images/image-uploading-workflow.png")
     st.write(
-        "Later on, images in the database will be used to train a computer vision model to power Nutrify."
+        "Later on, images in the database will be used to train a computer \
+            vision model to power Nutrify."
     )
 with st.expander("Why do you need images of food?"):
     st.write(
         """
-    Machine learning models learn by looking at many different examples of things.\n
+    Machine learning models learn by looking at many different examples \
+        of things.\n
     Food included.\n
-    Eventually, Nutrify wants to be an app you can use to *take a photo of food and learn about it*.\n
-    To do so, we'll need many different examples of foods to build a computer vision
+    Eventually, Nutrify wants to be an app you can use to *take a photo of \
+        food and learn about it*.\n
+    To do so, we'll need many different examples of foods to build a \
+        computer vision
     model capable of identifying almost anything you can eat.\n
     And the more images of food you upload, the better the models will get.
     """
     )
 
 st.markdown(
-    "View the source code for this page on [GitHub](https://github.com/mrdbourke/nutrify)."
+    "View the source code for this page on \
+        [GitHub](https://github.com/mrdbourke/nutrify)."
 )
