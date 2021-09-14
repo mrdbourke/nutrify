@@ -1,7 +1,10 @@
+import PIL
 import streamlit as st
 import datetime
+import os
 
 from PIL import Image
+from streamlit.uploaded_file_manager import UploadedFile
 
 from save_to_gsheets import append_values_to_gsheet
 from utils import create_unique_filename, upload_blob
@@ -9,6 +12,9 @@ from rich import pretty, print, traceback
 
 pretty.install()
 traceback.install()
+
+# Get filename for image upload source in database
+IMAGE_UPLOAD_SOURCE = str(os.path.basename(__file__))
 
 st.title("Nutrify Image Collection 🍔👁")
 st.write(
@@ -23,13 +29,16 @@ uploaded_image = st.file_uploader(
 )
 
 
-def display_image(img):
+def display_image(img: UploadedFile) -> PIL.Image:
+    """
+    Displays an image if the image exists.
+    """
     if img is not None:
         # Show the image
         img = Image.open(img)
         print("Displaying image...")
         print(img.height, img.width)
-        st.image(img, width=400)
+        st.image(img, width=400, use_column_width="always")
     return img
 
 
@@ -103,6 +112,7 @@ with st.form(key="image_metadata_submit_form", clear_on_submit=True):
             # Add image metadata to Gsheet
             img_height = image.height
             img_width = image.width
+            # Create list of image metadata to save
             image_info = [
                 [
                     unique_image_id,
@@ -112,6 +122,7 @@ with st.form(key="image_metadata_submit_form", clear_on_submit=True):
                     label,
                     country,
                     email,
+                    IMAGE_UPLOAD_SOURCE,
                 ]
             ]
             response = append_values_to_gsheet(values_to_add=image_info)
