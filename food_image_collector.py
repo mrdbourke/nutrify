@@ -156,7 +156,7 @@ with st.expander("What happens to my image?"):
     Here's a pretty picture which describes it in more detail:
     """
     )
-    st.image("./images/image-uploading-workflow.png")
+    st.image("./images/image-uploading-workflow-with-background.png")
     st.write(
         "Later on, images in the database will be used to train a computer \
             vision model to power Nutrify."
