@@ -2,6 +2,7 @@ import PIL
 import streamlit as st
 import datetime
 import os
+import uuid
 
 from PIL import Image
 from streamlit.uploaded_file_manager import UploadedFile
@@ -22,10 +23,15 @@ st.write(
         food image database!"
 )
 
+# Store image upload ID as key, this will be changed once image is uploaded
+if "upload_key" not in st.session_state:
+    st.session_state["upload_key"] = str(uuid.uuid4())
+
 uploaded_image = st.file_uploader(
     label="Upload an image of food",
     type=["png", "jpeg", "jpg"],
     help="Tip: if you're on a mobile device you can also take a photo",
+    key=st.session_state["upload_key"],  # set the key for the uploaded file
 )
 
 
@@ -33,16 +39,17 @@ def display_image(img: UploadedFile) -> PIL.Image:
     """
     Displays an image if the image exists.
     """
+    displayed_image = None
     if img is not None:
         # Show the image
         img = Image.open(img)
         print("Displaying image...")
         print(img.height, img.width)
-        st.image(img, width=400, use_column_width="always")
-    return img
+        displayed_image = st.image(img, width=400, use_column_width="always")
+    return img, displayed_image
 
 
-image = display_image(uploaded_image)
+image, displayed_image = display_image(uploaded_image)
 
 # Create image label form to submit
 st.write("## Image details")
@@ -105,9 +112,6 @@ with st.form(key="image_metadata_submit_form", clear_on_submit=True):
                     source_file_name=uploaded_image,
                     destination_blob_name=unique_image_id + ".jpeg",
                 )
-            st.success(
-                f"Your image of {label} has been uploaded! Thank you :)"
-            )
 
             # Add image metadata to Gsheet
             img_height = image.height
@@ -127,9 +131,21 @@ with st.form(key="image_metadata_submit_form", clear_on_submit=True):
             ]
             response = append_values_to_gsheet(values_to_add=image_info)
 
+            st.success(
+                f"Your image of {label} has been uploaded! Thank you :)"
+            )
+
             # Output details
             print(response)
             print(image)
+
+            # Remove (displayed) image after upload successful
+            displayed_image.empty()
+            # Remove (uploaded) image after upload successful
+            # To do this, the key it's stored under Streamlit's
+            # UploadedFile gets changed to something random
+            st.session_state["upload_key"] = str(uuid.uuid4())
+
 
 st.write("## FAQ")
 with st.expander("What happens to my image?"):
