@@ -140,7 +140,5 @@ cython_debug/
 
 ## Extras
 *.json
-.streamlit
-.streamlit/*
 .streamlit/secrets.toml
 .DS_Store
