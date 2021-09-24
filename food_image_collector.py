@@ -102,7 +102,7 @@ with st.form(key="image_metadata_submit_form", clear_on_submit=True):
 
             # Make timestamp
             current_time = datetime.datetime.now().strftime(
-                "%Y-%m-%d-%H-%M-%S"
+                "%Y-%m-%d %H:%M:%S"
             )
 
             # Upload image object to Google Storage
