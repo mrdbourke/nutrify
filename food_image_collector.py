@@ -58,14 +58,13 @@ with st.form(key="image_metadata_submit_form", clear_on_submit=True):
     label = st.text_input(
         label="What food(s) are in the image you uploaded? \
         You can enter text like: 'ramen' or 'eggs, bread, bacon'",
-        max_chars=200,
+        max_chars=100,
     )
 
     # Image upload location
     country = st.text_input(
         label="Where are you uploading this delicious-looking food image \
             from?",
-        value="US",
         autocomplete="country",
     )
     st.caption(
