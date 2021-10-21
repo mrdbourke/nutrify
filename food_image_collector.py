@@ -7,7 +7,6 @@ import uuid
 from PIL import Image
 from streamlit.uploaded_file_manager import UploadedFile
 
-from save_metadata_to_db import write_record_to_table
 from save_to_gsheets import append_values_to_gsheet
 from utils import create_unique_filename, upload_blob
 from rich import pretty, print, traceback
@@ -133,17 +132,17 @@ with st.form(key="image_metadata_submit_form", clear_on_submit=True):
             ]
             response = append_values_to_gsheet(values_to_add=image_info)
 
-            # Save data to SQL table
-            write_record_to_table(
-                image_id=unique_image_id,
-                upload_timestamp=current_time,
-                image_height=img_height,
-                image_width=img_width,
-                user_uploaded_label=label,
-                user_uploaded_country_code=country,
-                user_uploaded_email=email,
-                source_of_upload=IMAGE_UPLOAD_SOURCE,
-            )
+            # # Save data to SQL table
+            # write_record_to_table(
+            #     image_id=unique_image_id,
+            #     upload_timestamp=current_time,
+            #     image_height=img_height,
+            #     image_width=img_width,
+            #     user_uploaded_label=label,
+            #     user_uploaded_country_code=country,
+            #     user_uploaded_email=email,
+            #     source_of_upload=IMAGE_UPLOAD_SOURCE,
+            # )
 
             st.success(
                 f"Your image of {label} has been uploaded! Thank you :)"
