@@ -6,7 +6,7 @@ import os
 
 # Check to see if developing locally (this changes where images are stored)
 if os.environ.get("TEST_NUTRIFY_ENV_VAR"):
-    print("***Using testing database***")
+    print("*** Using testing Google Sheets database ***")
     SPREADSHEET_ID = (
         "1fdEeFZkr7pNIM-C2vSCe9JVVaUnOL5ZfJ5I8c860VoE"  # test database
     )

@@ -7,6 +7,7 @@ import uuid
 from PIL import Image
 from streamlit.uploaded_file_manager import UploadedFile
 
+from save_metadata_to_db import write_record_to_table
 from save_to_gsheets import append_values_to_gsheet
 from utils import create_unique_filename, upload_blob
 from rich import pretty, print, traceback
@@ -45,7 +46,7 @@ def display_image(img: UploadedFile) -> PIL.Image:
         img = Image.open(img)
         print("Displaying image...")
         print(img.height, img.width)
-        displayed_image = st.image(img, width=400, use_column_width="always")
+        displayed_image = st.image(img, use_column_width="auto")
     return img, displayed_image
 
 
@@ -66,9 +67,10 @@ with st.form(key="image_metadata_submit_form", clear_on_submit=True):
         label="Where are you uploading this delicious-looking food image \
             from?",
         autocomplete="country",
+        max_chars=2,  # Get country code in 2 chars
     )
     st.caption(
-        "Country level is fine, for example 'AU' for Australia or 'IND' \
+        "Alpha-2 country code is fine, for example 'AU' for Australia or 'IN' \
             for India"
     )
 
@@ -115,7 +117,8 @@ with st.form(key="image_metadata_submit_form", clear_on_submit=True):
             # Add image metadata to Gsheet
             img_height = image.height
             img_width = image.width
-            # Create list of image metadata to save
+
+            # Create dict of image metadata to save
             image_info = [
                 [
                     unique_image_id,
@@ -129,6 +132,18 @@ with st.form(key="image_metadata_submit_form", clear_on_submit=True):
                 ]
             ]
             response = append_values_to_gsheet(values_to_add=image_info)
+
+            # Save data to SQL table
+            write_record_to_table(
+                image_id=unique_image_id,
+                upload_timestamp=current_time,
+                image_height=img_height,
+                image_width=img_width,
+                user_uploaded_label=label,
+                user_uploaded_country_code=country,
+                user_uploaded_email=email,
+                source_of_upload=IMAGE_UPLOAD_SOURCE,
+            )
 
             st.success(
                 f"Your image of {label} has been uploaded! Thank you :)"
