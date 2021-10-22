@@ -1,0 +1,15 @@
+Table,Number of Records
+fndds_derivation,49
+fndds_ingredient_nutrient_value,151551
+food_attribute_type,5
+food_category,28
+food_nutrient_derivation,64
+food_nutrient_source,10
+lab_method,270
+lab_method_code,292
+lab_method_nutrient,1005
+measure_unit,122
+nutrient,463
+nutrient_incoming_name,730
+retention_factor,270
+wweia_food_category,167
