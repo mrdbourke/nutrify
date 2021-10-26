@@ -17,7 +17,7 @@ Something like this (a data flywheel for food images):
 
 ## What's in this repo?
 * `images/` - folder with misc images for the project
-* `data_exploration` - notebooks & data exploring the USDA FoodData Central data (this has info about the nutrition content of foods)
+* `data_exploration/` - notebooks & data exploring the USDA FoodData Central data (this has info about the nutrition content of foods)
 * `food_image_collector.py` - Streamlit-powered app that collects photos and uploads them to a Google Storage bucket and stores metadata in Google Sheets (these are private), see the workflow below.
 * `save_to_gsheets.py` - Small utility script that saves a bunch of metadata about an uploaded image to a Google Sheet (this will likely move into a dedicated `utils/` folder later on.
 * `utils.py` - Series of helper functions used in `food_image_collector.py`, for example, `upload_blod()`, a function that uploads a photo to Google Storage.
