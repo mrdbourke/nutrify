@@ -1,5 +1,4 @@
 <!doctype html>
-
 <html lang="en">
 
 <head>
@@ -17,6 +16,19 @@
         it's native, etc.</p>
     <p>To start, we're keeping it simple. Whole foods only. For example, an onion or a banana rather than a dish like
         chicken curry.</p>
+    <p>You can try the current model to identify foods now. It works for 78 foods so far.</p>
+    <button id="upload-button">
+        <span>Upload Image</span>
+    </button>
+    <p>
+        <input type="file" style="display: none" accept="image/*" name="image" id="file-input" />
+    </p>
+    <p><img id="image" width="200" /></p>
+
+    <p>Predicted class:</p>
+    <p id="predicted_class"></p>
+    <!-- <p>Predicted probability:</p>
+    <p id="predicted_prob"></p> -->
     <p>Building the vision models will likely take a fair amount of labelled images of food (currently being sourced).
     </p>
     <p>But if you'd like to help, you can <a
@@ -25,5 +37,10 @@
     <p>See the <a href="https://github.com/mrdbourke/nutrify">GitHub</a> for development stages and code.</p>
     <p>Watch the live development on <a href="https://www.twitch.tv/mrdbourke">Twitch</a> and <a
             href="https://youtube.com/playlist?list=PL8IpyNZ21vUTOJR1vKEBvqQaYmu7FErgc"> replays on YouTube</a>.</p>
-    <p>Last update: 29 Oct 2021</p>
+    <p>Last update: 21 Dec 2021</p>
+
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs/dist/tf.min.js" type="text/javascript"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-tflite@0.0.1-alpha.7/dist/tf-tflite.min.js"></script>
+
+    <script src="script.js"></script>
 </body>
