@@ -114,7 +114,7 @@ const loadModel = async () => {
     try {
         const tfliteModel = await tflite.loadTFLiteModel(
             // "models/nutrify_model_78_foods_v0.tflite"
-            "models/2022-01-13-nutrify_model_100_foods_v0.tflite"
+            "models/2022-01-16-nutrify_model_100_foods_manually_cleaned_10_classes_foods_v1.tflite"
         );
         model = tfliteModel; // assigning it to the global scope model as tfliteModel can only be used within this scope
         // console.log(tfliteModel);
