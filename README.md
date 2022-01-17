@@ -56,5 +56,6 @@ Upgrade stage 1, 2, 3 to work with world's 100 most commonly eaten foods (start 
 Repeat the above until almost every food you can eat is covered.
 
 ## Updates
+* 17 Jan 2021 - cleaned up the data by removing duplicates/fixing some low performing classes ([see the update comment](https://github.com/mrdbourke/nutrify/discussions/32#discussioncomment-1980942))
 * 14 Jan 2021 - Nutrify can now identify 100 foods ([see release notes](https://github.com/mrdbourke/nutrify/releases/tag/v0.1.2))
 * 22 Dec 2021 - Nutrify can now identify 78 foods
