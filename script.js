@@ -1,105 +1,15 @@
-const classes = {
-    0: 'Apple',
-    1: 'Artichoke',
-    2: 'Avocado',
-    3: 'BBQ sauce',
-    4: 'Bacon',
-    5: 'Bagel',
-    6: 'Banana',
-    7: 'Beef',
-    8: 'Beer',
-    9: 'Blueberries',
-    10: 'Bread',
-    11: 'Broccoli',
-    12: 'Butter',
-    13: 'Cabbage',
-    14: 'Candy',
-    15: 'Cantaloupe',
-    16: 'Carrot',
-    17: 'Cheese',
-    18: 'Cherry',
-    19: 'Chicken wings',
-    20: 'Cocktail',
-    21: 'Coconut',
-    22: 'Coffee',
-    23: 'Cookie',
-    24: 'Corn chips',
-    25: 'Cream',
-    26: 'Cucumber',
-    27: 'Doughnut',
-    28: 'Dumpling',
-    29: 'Egg',
-    30: 'Egg tart',
-    31: 'Eggplant',
-    32: 'Fish',
-    33: 'French fries',
-    34: 'Fries',
-    35: 'Garlic',
-    36: 'Grape',
-    37: 'Grapefruit',
-    38: 'Green beans',
-    39: 'Green onion',
-    40: 'Guacamole',
-    41: 'Hamburger',
-    42: 'Hamimelon',
-    43: 'Honey',
-    44: 'Ice cream',
-    45: 'Kiwi fruit',
-    46: 'Lemon',
-    47: 'Lettuce',
-    48: 'Lime',
-    49: 'Lobster',
-    50: 'Mango',
-    51: 'Meat ball',
-    52: 'Milk',
-    53: 'Muffin',
-    54: 'Mushroom',
-    55: 'Noodles',
-    56: 'Nuts',
-    57: 'Okra',
-    58: 'Olive oil',
-    59: 'Olives',
-    60: 'Onion',
-    61: 'Orange',
-    62: 'Orange juice',
-    63: 'Pancake',
-    64: 'Papaya',
-    65: 'Pasta',
-    66: 'Pastry',
-    67: 'Peach',
-    68: 'Pear',
-    69: 'Pepper',
-    70: 'Pie',
-    71: 'Pineapple',
-    72: 'Pizza',
-    73: 'Plum',
-    74: 'Pomegranate',
-    75: 'Popcorn',
-    76: 'Potato',
-    77: 'Prawns',
-    78: 'Pretzel',
-    79: 'Pumpkin',
-    80: 'Radish',
-    81: 'Red cabbage',
-    82: 'Rice',
-    83: 'Salad',
-    84: 'Salt',
-    85: 'Sandwich',
-    86: 'Sausages',
-    87: 'Soft drink',
-    88: 'Spinach',
-    89: 'Spring rolls',
-    90: 'Steak',
-    91: 'Strawberries',
-    92: 'Sushi',
-    93: 'Tea',
-    94: 'Tomato',
-    95: 'Tomato sauce',
-    96: 'Waffle',
-    97: 'Watermelon',
-    98: 'Wine',
-    99: 'Zucchini'
-};
+// Get class names as array
+import { fdc_ids_as_array } from "./constants.js";
+import { getFoodData } from "./get_data.js";
+import { get_all_food_data_from_supabase } from "./get_data.js";
+
+console.log(fdc_ids_as_array)
+
+// Get all food data in one hit from Supabase and save it to a constant
+const data = await get_all_food_data_from_supabase();
+console.log("Logging data:")
+console.log(data);
+
 
 // Check to see if TF.js is available
 const tfjs_status = document.getElementById("tfjs_status");
@@ -108,16 +18,15 @@ if (tfjs_status) {
     tfjs_status.innerText = "Loaded TensorFlow.js - version:" + tf.version.tfjs;
 }
 
+// Setup the model code
 let model; // This is in global scope
 
 const loadModel = async () => {
     try {
         const tfliteModel = await tflite.loadTFLiteModel(
-            // "models/nutrify_model_78_foods_v0.tflite"
             "models/2022-01-16-nutrify_model_100_foods_manually_cleaned_10_classes_foods_v1.tflite"
         );
         model = tfliteModel; // assigning it to the global scope model as tfliteModel can only be used within this scope
-        // console.log(tfliteModel);
 
         //  Check if model loaded
         if (tfliteModel) {
@@ -126,15 +35,8 @@ const loadModel = async () => {
     } catch (error) {
         console.log(error);
     }
-
-    // // Prepare input tensors.
-    // const img = tf.browser.fromPixels(document.querySelector('img'));
-    // const input = tf.sub(tf.div(tf.expandDims(img), 127.5), 1);
-
-    // // Run inference and get output tensors.
-    // let outputTensor = tfliteModel.predict(input);
-    // console.log(outputTensor.dataSync());
 };
+
 loadModel();
 
 // Function to classify image
@@ -152,16 +54,20 @@ function classifyImage(model, image) {
     console.log("model about to predict...");
     const output = model.predict(image);
     const output_values = tf.softmax(output.arraySync()[0]);
-    console.log("Arg max:");
-    // console.log(output);
-    console.log(output_values.arraySync());
-    console.log("Output:");
+
+    console.log("Output of model:");
     console.log(output.arraySync());
     console.log(output.arraySync()[0]); // arraySync() Returns an array to use
 
+    console.log("After calling softmax on the output:");
+    console.log(output_values.arraySync());
+
     // Update HTML
-    predicted_class.textContent = classes[output_values.argMax().arraySync()];
-    predicted_prob.textContent = output_values.max().arraySync() * 100 + "%";
+    const predicted_class_string = fdc_ids_as_array[output_values.argMax().arraySync()];
+    predicted_class.textContent = predicted_class_string;
+    // predicted_prob.textContent = output_values.max().arraySync() * 100 + "%";
+    // Get data from Supabase and update HTML
+    getFoodData(predicted_class_string, data);
 }
 
 // Image uploading
@@ -193,8 +99,11 @@ function getImage() {
             // Log image parameters
             const currImage = tf.browser.fromPixels(imageElement);
 
-            // Classify image
+            // Classify image (and update page with food info)
+            var startTime = performance.now()
             classifyImage(model, currImage);
+            var endTime = performance.now()
+            document.getElementById("time_taken").textContent = `${(endTime - startTime) / 1000} seconds`
         };
 
         document.body.classList.add("image-loaded");
