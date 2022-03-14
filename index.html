@@ -5,6 +5,11 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Nutrify</title>
+
+    <script type="module" src="supabaseClient.js"></script>
+    <script type="module" src="constants.js"></script>
+    <script type="module" src="get_data.js"></script>
+
 </head>
 
 <body>
@@ -26,10 +31,19 @@
     </p>
     <p><img id="image" width="200" /></p>
 
-    <p>Predicted class:</p>
-    <p id="predicted_class"></p>
+    <p>Predicted food: <span id="predicted_class"></span></p>
     <!-- <p>Predicted probability:</p>
     <p id="predicted_prob"></p> -->
+
+    <p>Macronutrients per 100g:</p>
+    <ul>
+        <li>protein: <span id="protein_amount"></span></li>
+        <li>carbohydrates: <span id="carbohydrate_amount"></span></li>
+        <li>fats: <span id="fat_amount"></span></li>
+    </ul>
+    <p>Time taken: <span id="time_taken"></span></p>
+
+    <h2>Help build</h2>
     <p>Building the vision models will likely take a fair amount of labelled images of food (currently being sourced).
     </p>
     <p>But if you'd like to help, you can <a
@@ -40,9 +54,9 @@
             href="https://youtube.com/playlist?list=PL8IpyNZ21vUTOJR1vKEBvqQaYmu7FErgc"> replays on YouTube</a>.</p>
     <p>Last update: 14 Jan 2021 (78 -> 100 foods identifiable)</p>
 
-
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs/dist/tf.min.js" type="text/javascript"></script>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-tflite@0.0.1-alpha.7/dist/tf-tflite.min.js"></script>
+    <script type="module" src="script.js"></script>
 
-    <script src="script.js"></script>
+
 </body>
