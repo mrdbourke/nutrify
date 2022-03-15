@@ -10,13 +10,59 @@ const data = await get_all_food_data_from_supabase();
 console.log("Logging data:")
 console.log(data);
 
-
 // Check to see if TF.js is available
 const tfjs_status = document.getElementById("tfjs_status");
 
 if (tfjs_status) {
     tfjs_status.innerText = "Loaded TensorFlow.js - version:" + tf.version.tfjs;
 }
+
+// Image uploading
+const fileInput = document.getElementById("file-input");
+const image = document.getElementById("image");
+const uploadButton = document.getElementById("upload-button");
+
+function getImage() {
+    if (!fileInput.files[0]) throw new Error("Image not found");
+    const file = fileInput.files[0];
+
+    // Get the data url from the image
+    const reader = new FileReader();
+
+    // When reader is ready display image
+    reader.onload = function (event) {
+        // Get data URL
+        const dataUrl = event.target.result;
+
+        // Create image object
+        const imageElement = new Image();
+        imageElement.src = dataUrl;
+
+        // When image object loaded
+        imageElement.onload = function () {
+            // Display image
+            image.setAttribute("src", this.src);
+
+            // Log image parameters
+            const currImage = tf.browser.fromPixels(imageElement);
+
+            // Classify image (and update page with food info)
+            var startTime = performance.now()
+            classifyImage(model, currImage);
+            var endTime = performance.now()
+            document.getElementById("time_taken").textContent = `${((endTime - startTime) / 1000).toFixed(4)} seconds`
+        };
+
+        document.body.classList.add("image-loaded");
+    };
+
+    // Get data url
+    reader.readAsDataURL(file);
+}
+
+// Add listener to see if someone uploads an image
+fileInput.addEventListener("change", getImage);
+uploadButton.addEventListener("click", () => fileInput.click());
 
 // Setup the model code
 let model; // This is in global scope
@@ -70,52 +116,6 @@ function classifyImage(model, image) {
     getFoodData(predicted_class_string, data);
 }
 
-// Image uploading
-const fileInput = document.getElementById("file-input");
-const image = document.getElementById("image");
-const uploadButton = document.getElementById("upload-button");
-
-function getImage() {
-    if (!fileInput.files[0]) throw new Error("Image not found");
-    const file = fileInput.files[0];
-
-    // Get the data url from the image
-    const reader = new FileReader();
-
-    // When reader is ready display image
-    reader.onload = function (event) {
-        // Get data URL
-        const dataUrl = event.target.result;
-
-        // Create image object
-        const imageElement = new Image();
-        imageElement.src = dataUrl;
-
-        // When image object loaded
-        imageElement.onload = function () {
-            // Display image
-            image.setAttribute("src", this.src);
-
-            // Log image parameters
-            const currImage = tf.browser.fromPixels(imageElement);
-
-            // Classify image (and update page with food info)
-            var startTime = performance.now()
-            classifyImage(model, currImage);
-            var endTime = performance.now()
-            document.getElementById("time_taken").textContent = `${((endTime - startTime) / 1000).toFixed(4)} seconds`
-        };
-
-        document.body.classList.add("image-loaded");
-    };
-
-    // Get data url
-    reader.readAsDataURL(file);
-}
-
-// Add listener to see if someone uploads an image
-fileInput.addEventListener("change", getImage);
-uploadButton.addEventListener("click", () => fileInput.click());
 
   // console.log(tf.browser.fromPixels(fileInput.files[0]).print());
 
