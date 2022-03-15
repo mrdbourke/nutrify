@@ -31,7 +31,7 @@ The script `food_image_collector.py` is currently hosted using Streamlit Cloud. 
 
 ## Master plan
 
-As of: 14 Jan 2021
+As of: 15 March 2022
 
 **Note:** this is very likely to change.
 
@@ -39,7 +39,7 @@ As of: 14 Jan 2021
 
 Build food image collection app, need a way to store images at large scale, images: object storage (Google Storage), info about images: relational database (PostgreSQL).
 
-### Stage 2 (currently here)
+### Stage 2 (done, see: https://github.com/mrdbourke/nutrify/releases/tag/v0.1.3)
 
 Build small prototype computer vision app to take a photo of ~100 different types of foods and return back their nutrition information (this'll be done via a public nutrition API, if you know of one, please let me know).
 
@@ -56,6 +56,7 @@ Upgrade stage 1, 2, 3 to work with world's 100 most commonly eaten foods (start 
 Repeat the above until almost every food you can eat is covered.
 
 ## Updates
-* 17 Jan 2021 - cleaned up the data by removing duplicates/fixing some low performing classes ([see the update comment](https://github.com/mrdbourke/nutrify/discussions/32#discussioncomment-1980942))
-* 14 Jan 2021 - Nutrify can now identify 100 foods ([see release notes](https://github.com/mrdbourke/nutrify/releases/tag/v0.1.2))
+* 14 Mar 2022 - added macronutrient details for ~100 foods, [see release notes](https://github.com/mrdbourke/nutrify/releases/tag/v0.1.3)
+* 17 Jan 2022 - cleaned up the data by removing duplicates/fixing some low performing classes ([see the update comment](https://github.com/mrdbourke/nutrify/discussions/32#discussioncomment-1980942))
+* 14 Jan 2022 - Nutrify can now identify 100 foods ([see release notes](https://github.com/mrdbourke/nutrify/releases/tag/v0.1.2))
 * 22 Dec 2021 - Nutrify can now identify 78 foods
