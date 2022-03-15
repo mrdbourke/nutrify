@@ -103,7 +103,7 @@ function getImage() {
             var startTime = performance.now()
             classifyImage(model, currImage);
             var endTime = performance.now()
-            document.getElementById("time_taken").textContent = `${(endTime - startTime) / 1000} seconds`
+            document.getElementById("time_taken").textContent = `${((endTime - startTime) / 1000).toFixed(4)} seconds`
         };
 
         document.body.classList.add("image-loaded");
