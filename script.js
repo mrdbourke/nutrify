@@ -67,22 +67,24 @@ uploadButton.addEventListener("click", () => fileInput.click());
 // Setup the model code
 let model; // This is in global scope
 
+const model_string_path = "models/2022-01-16-nutrify_model_100_foods_manually_cleaned_10_classes_foods_v1.tflite"
 const loadModel = async () => {
     try {
         const tfliteModel = await tflite.loadTFLiteModel(
-            "models/2022-01-16-nutrify_model_100_foods_manually_cleaned_10_classes_foods_v1.tflite"
+            model_string_path
         );
         model = tfliteModel; // assigning it to the global scope model as tfliteModel can only be used within this scope
-
-        //  Check if model loaded
-        if (tfliteModel) {
-            model_status.innerText = "Model loaded";
-        }
+        console.log(`Loaded model: ${model_string_path}`)
+        // //  Check if model loaded
+        // if (tfliteModel) {
+        //     model_status.innerText = "Model loaded";
+        // }
     } catch (error) {
         console.log(error);
     }
 };
 
+// Load model and data
 loadModel();
 
 // Function to classify image
