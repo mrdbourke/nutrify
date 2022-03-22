@@ -1,6 +1,6 @@
 import { reverse_map } from "./utils.js";
 
-export const fdc_ids = fdc_ids = {
+export const fdc_ids = {
     1750339: 'Apple',
     169236: 'Artichoke',
     171705: 'Avocado',
