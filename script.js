@@ -3,24 +3,21 @@ import { fdc_ids_as_array } from "./constants.js";
 import { getFoodData } from "./get_data.js";
 import { get_all_food_data_from_supabase } from "./get_data.js";
 
-console.log(fdc_ids_as_array)
-
-// Get all food data in one hit from Supabase and save it to a constant
-const data = await get_all_food_data_from_supabase();
-console.log("Logging data:")
-console.log(data);
+// Loading data
+console.log(`Loaded data for following FDC IDs: ${fdc_ids_as_array}`);
 
 // Check to see if TF.js is available
-const tfjs_status = document.getElementById("tfjs_status");
-
-if (tfjs_status) {
-    tfjs_status.innerText = "Loaded TensorFlow.js - version:" + tf.version.tfjs;
-}
+console.log(`Loaded TensorFlow.js - version: ${tf.version.tfjs}`);
 
 // Image uploading
 const fileInput = document.getElementById("file-input");
 const image = document.getElementById("image");
 const uploadButton = document.getElementById("upload-button");
+
+// Get all food data in one hit from Supabase and save it to a constant
+const data = await get_all_food_data_from_supabase();
+console.log("Logging data:")
+console.log(data);
 
 function getImage() {
     if (!fileInput.files[0]) throw new Error("Image not found");
@@ -46,9 +43,23 @@ function getImage() {
             // Log image parameters
             const currImage = tf.browser.fromPixels(imageElement);
 
-            // Classify image (and update page with food info)
+            // Start timer
             var startTime = performance.now()
-            classifyImage(model, currImage);
+
+            // Classify image uploaded - 1st: to food/not food, 2nd: what food is it?
+            // If the following outputs True, run with the food prediction,
+            // if not, post a message saying no food found, please try another.
+            if (foodNotFood(foodNotFoodModel, currImage)) {
+                classifyImage(foodVisionModel, currImage);
+            } else {
+                // Update HTML to reflect no food
+                predicted_class.textContent = "No food found, please try another image."
+                protein_amount.textContent = ""
+                carbohydrate_amount.textContent = ""
+                fat_amount.textContent = ""
+            }
+
+            // Finish timer and output time of classification
             var endTime = performance.now()
             document.getElementById("time_taken").textContent = `${((endTime - startTime) / 1000).toFixed(4)} seconds`
         };
@@ -64,21 +75,31 @@ function getImage() {
 fileInput.addEventListener("change", getImage);
 uploadButton.addEventListener("click", () => fileInput.click());
 
-// Setup the model code
-let model; // This is in global scope
+// Setup the model(s) code
+let foodVisionModel; // This is in global scope
+let foodNotFoodModel;
 
-const model_string_path = "models/2022-01-16-nutrify_model_100_foods_manually_cleaned_10_classes_foods_v1.tflite"
+const foodVisionModelStringPath = "models/2022-01-16-nutrify_model_100_foods_manually_cleaned_10_classes_foods_v1.tflite"
+const foodNotFoodModelStringPath = "models/2022-03-18_food_not_food_model_efficientnet_lite0_v1.tflite"
+
 const loadModel = async () => {
+    // Load foodVisionModel (predicts what food is in an image)
+    // and foodNotFoodModel (predicts whether their is food in an image or not)
     try {
-        const tfliteModel = await tflite.loadTFLiteModel(
-            model_string_path
+        const foodVisionTFLiteModel = await tflite.loadTFLiteModel(
+            foodVisionModelStringPath
         );
-        model = tfliteModel; // assigning it to the global scope model as tfliteModel can only be used within this scope
-        console.log(`Loaded model: ${model_string_path}`)
-        // //  Check if model loaded
-        // if (tfliteModel) {
-        //     model_status.innerText = "Model loaded";
-        // }
+        const foodNotFoodTFLiteModel = await tflite.loadTFLiteModel(
+            foodNotFoodModelStringPath
+        );
+
+        // Set models to global scope
+        foodVisionModel = foodVisionTFLiteModel; // assigning it to the global scope model as tfliteModel can only be used within this scope
+        console.log(`Loaded model: ${foodVisionModelStringPath}`)
+
+        foodNotFoodModel = foodNotFoodTFLiteModel
+        console.log(`Loaded model: ${foodNotFoodModelStringPath}`)
+
     } catch (error) {
         console.log(error);
     }
@@ -92,19 +113,19 @@ function classifyImage(model, image) {
     // Preprocess image
     image = tf.image.resizeBilinear(image, [240, 240]); // image size needs to be same as model inputs - EffNetB1 takes 240x240
     image = tf.expandDims(image);
-    console.log(image);
+
+    // Log image and model if needed
+    // console.log(image);
     // console.log(model);
 
     // console.log(tflite.getDTypeFromTFLiteType("uint8")); // Gives int32 as output thus we cast int32 in below line
-    // console.log(tflite.getDTypeFromTFLiteType("uint8"));
-    console.log("converting image to different datatype...");
+    console.log("Converting image to different datatype...");
     image = tf.cast(image, "int32"); // Model requires uint8
-    console.log("model about to predict...");
+    console.log("Model about to predict what kind of food it is...");
     const output = model.predict(image);
     const output_values = tf.softmax(output.arraySync()[0]);
 
     console.log("Output of model:");
-    console.log(output.arraySync());
     console.log(output.arraySync()[0]); // arraySync() Returns an array to use
 
     console.log("After calling softmax on the output:");
@@ -119,14 +140,46 @@ function classifyImage(model, image) {
 }
 
 
-  // console.log(tf.browser.fromPixels(fileInput.files[0]).print());
+// Function to classify whether the image is of food or not
+function foodNotFood(model, image) {
 
-  // console.log(tf.browser.fromPixels(document.querySelector("image")));
+    // Preprocess image
+    image = tf.image.resizeBilinear(image, [224, 224]); // image size needs to be same as model inputs - EffNetB0 takes 224x224
+    image = tf.expandDims(image);
 
-  // const test_image = new ImageData(1, 1);
-  // test_image.data[0] = 100;
-  // test_image.data[1] = 150;
-  // test_image.data[2] = 200;
-  // test_image.data[3] = 255;
+    // console.log(tflite.getDTypeFromTFLiteType("uint8")); // Gives int32 as output thus we cast int32 in below line
+    console.log("Converting image to different datatype...");
+    image = tf.cast(image, "int32"); // Model requires uint8
+    console.log("Model predicting food/not food...");
 
-  // tf.browser.fromPixels(test_image).print();
+    // Make prediction on image
+    const output = model.predict(image);
+
+    // Calculate various values
+    const output_values = tf.softmax(output.arraySync()[0]);
+    const output_max = tf.max(output.arraySync()[0]);
+
+    console.log("Output of foodNotFood model:");
+    console.log(output.arraySync()[0]); // arraySync() Returns an array to use
+
+    console.log("After calling softmax on the output:");
+    console.log(output_values.arraySync());
+
+    // Find out "food" or "not food" status
+    const foodNotFoodClasses = {
+        0: "Food",
+        1: "Not Food"
+    }
+
+    const foodOrNot = output_values.argMax().arraySync()
+    const foodOrNotPredProb = (((1 / 256) * output_max.arraySync()) * 100).toFixed(2)
+    console.log(`Uploaded image predicted to be: ${foodNotFoodClasses[foodOrNot]}`)
+    console.log(`Prediction probability of ${foodNotFoodClasses[foodOrNot]}: ${foodOrNotPredProb}%`);
+
+    // Return 0 for "food" or 1 for "not food"
+    if (foodOrNot == 0) {
+        return true
+    } else {
+        return false
+    }
+}

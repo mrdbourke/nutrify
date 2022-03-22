@@ -11,7 +11,8 @@ export async function get_all_food_data_from_supabase() {
         console.log(error);
         return;
     }
-    console.log(data);
+    // Log data if necessary
+    // console.log(data);
     return data;
 };
 
