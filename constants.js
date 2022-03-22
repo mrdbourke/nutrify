@@ -1,6 +1,6 @@
 import { reverse_map } from "./utils.js";
 
-export const fdc_ids = {
+export const fdc_ids = fdc_ids = {
     1750339: 'Apple',
     169236: 'Artichoke',
     171705: 'Avocado',
@@ -20,6 +20,7 @@ export const fdc_ids = {
     746764: 'Carrot',
     328637: 'Cheese',
     171719: 'Cherry',
+    111110: 'Chicken',
     173630: 'Chicken wings',
     1104406: 'Cocktail',
     170169: 'Coconut',
@@ -35,7 +36,6 @@ export const fdc_ids = {
     169228: 'Eggplant',
     333374: 'Fish',
     170698: 'French fries',
-    111112: 'Fries',
     1104647: 'Garlic',
     173040: 'Grape',
     174673: 'Grapefruit',
@@ -67,7 +67,6 @@ export const fdc_ids = {
     175009: 'Pancake',
     169926: 'Papaya',
     168927: 'Pasta',
-    1104913: 'Pastry',
     325430: 'Peach',
     746773: 'Pear',
     170108: 'Pepper',
@@ -93,6 +92,7 @@ export const fdc_ids = {
     1102056: 'Spring rolls',
     746762: 'Steak',
     747448: 'Strawberries',
+    111112: 'Squid',
     1102350: 'Sushi',
     174144: 'Tea',
     1999634: 'Tomato',
