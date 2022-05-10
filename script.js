@@ -1,7 +1,7 @@
-// Get class names as array
+// Imports
 import { fdc_ids_as_array } from "./constants.js";
-import { getFoodData } from "./get_data.js";
-import { get_all_food_data_from_supabase } from "./get_data.js";
+import { getFoodData, get_all_food_data_from_supabase, showCorrectButtons } from "./get_data.js";
+import { uuidv4 } from "./utils.js"
 
 // Loading data
 console.log(`Loaded data for following FDC IDs: ${fdc_ids_as_array}`);
@@ -14,14 +14,23 @@ const fileInput = document.getElementById("file-input");
 const image = document.getElementById("image");
 const uploadButton = document.getElementById("upload-button");
 
+// Var creation
+var uuid;
+
 // Get all food data in one hit from Supabase and save it to a constant
 const data = await get_all_food_data_from_supabase();
 console.log("Logging data:")
 console.log(data);
 
+// Function to get image
 function getImage() {
+    // Throw error if file not found
     if (!fileInput.files[0]) throw new Error("Image not found");
     const file = fileInput.files[0];
+
+    // Hide thank you message (if it's on show)
+    var thankYouMessage = document.getElementById("thank_you_message")
+    thankYouMessage.style.display = "none";
 
     // Get the data url from the image
     const reader = new FileReader();
@@ -34,6 +43,10 @@ function getImage() {
         // Create image object
         const imageElement = new Image();
         imageElement.src = dataUrl;
+
+        // Create UUID for image instance
+        uuid = uuidv4();
+        console.log(`UUID: ${uuid}`);
 
         // When image object loaded
         imageElement.onload = function () {
@@ -135,8 +148,12 @@ function classifyImage(model, image) {
     const predicted_class_string = fdc_ids_as_array[output_values.argMax().arraySync()];
     predicted_class.textContent = predicted_class_string;
     // predicted_prob.textContent = output_values.max().arraySync() * 100 + "%";
+
     // Get data from Supabase and update HTML
     getFoodData(predicted_class_string, data);
+
+    // Show "is this correct?" buttons
+    showCorrectButtons(uuid);
 }
 
 
