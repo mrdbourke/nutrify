@@ -1,0 +1,71 @@
+.navbar-brand{
+    font-weight:600;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    color:salmon;
+}
+
+.nav-link{
+    font-weight:500;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    color: black;
+}
+
+.Home{
+    margin-top:30px;
+}
+
+.heading{
+    text-align: center;
+}
+
+#main-head{
+    font-size:4rem;
+    margin-bottom:30px;
+}
+
+#upload-button{
+    margin-top:50px;
+    background-color:#59CE8F;
+    padding:15px;
+    color:white;
+    border: #59CE8F;
+    border-radius:25px;
+}
+
+.result{
+    padding-top:80px;
+}
+
+#img{
+    text-align: center;
+}
+
+#image{
+    height:70%;
+    width:70%;
+}
+
+.card{
+    border: none;
+    margin-top:30px;
+    margin-bottom:30px;
+}
+
+#nutrients{
+    margin:20px 0px 20px;
+}
+
+.feedback{
+    margin:20px 0px 10px;
+    text-align: center;
+}
+
+.About,.Contribute,.News{
+    padding:50px 10px 50px;
+}
+
+.head{
+    text-align: center;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    margin-bottom:20px;
+}
