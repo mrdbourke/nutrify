@@ -20,6 +20,7 @@ from torch.utils.data import DataLoader
 
 from pathlib import Path
 from typing import Dict, List
+from contextlib import suppress  # suppresses amp_autocast if it's not available
 
 # Setup Google Storage Bucket
 GS_BUCKET = "food_vision_bucket_with_object_versioning"
@@ -144,6 +145,7 @@ group.add_argument(
 )
 group.add_argument(
     "--quick_experiment",
+    "-qe",
     default=False,
     type=bool,
     help="whether to run a full run-through quick experiment (limits samples to first 100 units only) (default: False)",
@@ -173,9 +175,23 @@ with open(os.path.join(output_dir, "args.yaml"), "w") as f:
 
 # Set devices
 if torch.cuda.is_available():
-    device = "cuda"
+    device = torch.device("cuda")
     torch.backends.cuda.matmul.allow_tf32 = True
     torch.backends.cudnn.benchmark = True
+
+# Setup AMP (automatic mixed precision training)
+from functools import partial
+
+if args.use_mixed_precision:
+    amp_autocast = partial(torch.autocast, device_type=device.type, dtype=torch.float16)
+    loss_scaler = torch.cuda.amp.GradScaler()
+    print("[INFO] Using mixed precision training. Training with dtype: torch.float16")
+else:
+    amp_autocast = suppress  # do nothing (no mixed precision)
+    print(
+        "[INFO] Not using mixed precision training. Training with dtype: torch.float32"
+    )
+
 
 # Set seeds
 # TODO: could functionize this?
@@ -214,6 +230,9 @@ annotations = pd.read_csv(labels_path)
 class_names = annotations["class_name"].to_list()
 class_labels = annotations["label"].to_list()
 class_dict = dict(sorted(dict(zip(class_labels, class_names)).items()))
+# Save class_dict to txt file
+with open(os.path.join(output_dir, "class_dict.txt"), "w") as f:
+    f.write(str(class_dict))
 print(f"[INFO] Working with: {len(class_dict)} classes")
 
 ### Create dataset ###
@@ -222,7 +241,7 @@ print(f"[INFO] Working with: {len(class_dict)} classes")
 from timm.data import ImageDataset
 from timm.data.readers.reader import (
     Reader,
-)  # TODO: this was updated to "parser -> reader", everywhere you see parser, replace with reader
+)
 
 
 class FoodVisionReader(Reader):
@@ -355,11 +374,85 @@ model.to(device)
 from torch import nn
 
 # TODO: setup mixed precision in train_step()
-from engine import train, train_step, test_step
+# TODO: fix engine script to work right within this script
+from nutrify.engine import train, train_step, test_step
 from tqdm.auto import tqdm
 
 loss_fn = nn.CrossEntropyLoss(label_smoothing=args.label_smoothing)
 optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
+
+# TODO: make a "validate every... epoch" for example could validate every 5 epochs or something
+
+from nutrify import utils
+
+
+def train_one_epoch(
+    epoch,
+    model,
+    train_dataloader,
+    optimizer,
+    loss_fn,
+    device=torch.device("cuda"),
+    amp_autocast=suppress,
+    loss_scaler=None,
+):
+
+    losses_meter = utils.AverageMeter()
+    top1_meter = utils.AverageMeter()
+    top5_meter = utils.AverageMeter()
+
+    # Setup train loss and train accuracy values
+    train_loss, train_acc = 0, 0
+
+    model.train()
+
+    num_batches_per_epoch = len(train_dataloader)
+    last_batch_idx = num_batches_per_epoch - 1
+
+    for batch_idx, (inputs, targets) in enumerate(tqdm(train_dataloader)):
+        last_batch = batch_idx == last_batch_idx  # Check to see if it's the last batch
+        inputs, targets = inputs.to(device), targets.to(device)
+
+        with amp_autocast():
+            outputs = model(inputs)
+            loss = loss_fn(outputs, targets)
+
+        # TODO: update loss meter
+
+        optimizer.zero_grad()
+
+        if loss_scaler is not None:
+            loss_scaler(loss).backward()
+            loss_scaler.step(optimizer)
+            loss_scaler.update()
+        else:
+            loss.backward()
+            optimizer.step()
+
+        # Calcuate train loss and train accuracy
+        outputs_pred_label = torch.argmax(outputs, dim=1)
+        train_loss += loss.item()
+        train_acc += (outputs_pred_label == targets).sum().item() / len(targets)
+
+        # Print out metrics
+        if batch_idx == 0:
+            # Print out what's happening
+            print(
+                f"Epoch: {epoch+1} | "
+                f"batch: {batch_idx+1}/{num_batches_per_epoch} |"
+                f"train_loss: {train_loss/len(train_dataloader):.4f} | "
+                f"train_acc: {train_acc/len(train_dataloader):.4f} | "
+            )
+
+        elif last_batch or last_batch_idx % args.log_interval == 0:
+            # Print out what's happening
+            print(
+                f"Epoch: {epoch+1} | "
+                f"batch: {batch_idx+1}/{num_batches_per_epoch} |"
+                f"train_loss: {train_loss/len(train_dataloader):.4f} | "
+                f"train_acc: {train_acc/len(train_dataloader):.4f} | "
+            )
+
 
 # TODO: break this down into train_one_epoch (like timm's train.py)
 # Train the model
@@ -407,21 +500,29 @@ def train(
     results = {"train_loss": [], "train_acc": [], "test_loss": [], "test_acc": []}
 
     # Loop through training and testing steps for a number of epochs
-    for epoch in tqdm(range(epochs)):
+    # for epoch in tqdm(range(epochs)):
+    for epoch in range(epochs):
         train_loss, train_acc = train_step(
+            epoch=epoch,
             model=model,
             dataloader=train_dataloader,
             loss_fn=loss_fn,
             optimizer=optimizer,
             device=device,
+            amp_autocast=amp_autocast,
+            loss_scaler=loss_scaler,
         )
         test_loss, test_acc = test_step(
-            model=model, dataloader=test_dataloader, loss_fn=loss_fn, device=device
+            epoch=epoch,
+            model=model,
+            dataloader=test_dataloader,
+            loss_fn=loss_fn,
+            device=device,
         )
 
         # Print out what's happening
         print(
-            f"Epoch: {epoch+1} | "
+            f"Results Epoch {epoch+1}: "
             f"train_loss: {train_loss:.4f} | "
             f"train_acc: {train_acc:.4f} | "
             f"test_loss: {test_loss:.4f} | "
