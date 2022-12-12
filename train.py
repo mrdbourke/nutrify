@@ -8,6 +8,7 @@ TODO: adapt the script to use more elegant features such as in:
     with the Transformers class?
 """
 import argparse
+import json
 import os
 import wandb
 import yaml
@@ -203,7 +204,9 @@ torch.cuda.manual_seed(42)
 # TODO: should I load the Artifacts from another file? e.g. load_artifacts.py?
 # TODO: can init Weights & Biases to log a config
 # Configuration info: Log hyperparameters, a link to your dataset, or the name of the architecture you're using as config parameters, passed in like this: wandb.init(config=your_config_dictionary).
-run = wandb.init(project=args.wandb_project, job_type=args.wandb_job_type)
+run = wandb.init(
+    project=args.wandb_project, job_type=args.wandb_job_type, tags=["training"]
+)
 
 # Add args config to Weights & Biases
 wandb.config.update(args)
@@ -230,10 +233,10 @@ annotations = pd.read_csv(labels_path)
 class_names = annotations["class_name"].to_list()
 class_labels = annotations["label"].to_list()
 class_dict = dict(sorted(dict(zip(class_labels, class_names)).items()))
-# Save class_dict to txt file
-with open(os.path.join(output_dir, "class_dict.txt"), "w") as f:
-    f.write(str(class_dict))
 print(f"[INFO] Working with: {len(class_dict)} classes")
+# Save class_dict to txt with each class on a new line
+with open(os.path.join(output_dir, "class_dict.txt"), "w") as f:
+    f.write(json.dumps(class_dict))
 
 ### Create dataset ###
 # TODO: turn this into it's own script for loading the data
@@ -561,6 +564,7 @@ vanilla_pytorch_results = train(
 )
 
 # Create a function to save to Google Storage
+# TODO: make an export function to save the model to different store types
 # TODO: put this file into a utils dir
 from google.cloud import storage
 
