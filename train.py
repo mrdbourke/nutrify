@@ -112,7 +112,6 @@ group.add_argument(
 
 
 # Create Weights and Biases parameters
-# TODO: add parameter for description of the run e.g. "using mixed precision or not..."
 # TODO: make it so you can use W&B if you want to but don't have to if you dont want to... (this can come later, simple first)
 group = parser.add_argument_group("Weights and Biases parameters")
 group.add_argument(
