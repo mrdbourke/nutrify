@@ -377,7 +377,7 @@ from torch import nn
 
 # TODO: setup mixed precision in train_step()
 # TODO: fix engine script to work right within this script
-from nutrify.engine import train, train_step, test_step
+from foodvision.engine import train, train_step, test_step
 from tqdm.auto import tqdm
 
 loss_fn = nn.CrossEntropyLoss(label_smoothing=args.label_smoothing)

@@ -1,5 +1,7 @@
 # Scripts and modules for training/evaluating models
 
+Foodvision = the ML model that powers Nutrify's computer vision system. 
+
 Going to store scripts in here for training models and evaluating them.
 
 The goal will be to have a dataflywheel happening from the main `train.py` script.
