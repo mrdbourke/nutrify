@@ -29,6 +29,12 @@ GS_BUCKET = "food_vision_bucket_with_object_versioning"
 # Setup GOOGLE_APPLICATION_CREDENTIALS
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "google-storage-key.json"
 
+# Test GCP connection
+from foodvision.utils import test_gcp_connection
+
+test_gcp_connection()
+
+# Setup the device
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # TODO: make it so you can import parameters with YAML if needed?
@@ -233,9 +239,10 @@ class_names = annotations["class_name"].to_list()
 class_labels = annotations["label"].to_list()
 class_dict = dict(sorted(dict(zip(class_labels, class_names)).items()))
 print(f"[INFO] Working with: {len(class_dict)} classes")
-# Save class_dict to txt with each class on a new line
-with open(os.path.join(output_dir, "class_dict.txt"), "w") as f:
-    f.write(json.dumps(class_dict))
+# Save class_dict to JSON with each class on a new line
+with open("class_dict.json", "w") as f:
+    class_dict_json = json.dumps(class_dict, indent=4)
+    f.write(class_dict_json)
 
 ### Create dataset ###
 # TODO: turn this into it's own script for loading the data
@@ -385,9 +392,9 @@ optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
 
 # TODO: make a "validate every... epoch" for example could validate every 5 epochs or something
 
-from nutrify import utils
+from foodvision import utils
 
-
+# TODO: make this function usable (or similar to timm's train.py)
 def train_one_epoch(
     epoch,
     model,
