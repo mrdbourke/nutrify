@@ -1,4 +1,3 @@
-
 """ Eval metrics and related
 Hacked together by / Copyright 2020 Ross Wightman
 Source: https://github.com/rwightman/pytorch-image-models/blob/e7da205345dcf770ee4bedd62d06fad7a1458904/timm/utils/metrics.py
@@ -7,6 +6,7 @@ Source: https://github.com/rwightman/pytorch-image-models/blob/e7da205345dcf770e
 
 class AverageMeter:
     """Computes and stores the average and current value"""
+
     def __init__(self):
         self.reset()
 
@@ -30,4 +30,24 @@ def accuracy(output, target, topk=(1,)):
     _, pred = output.topk(maxk, 1, True, True)
     pred = pred.t()
     correct = pred.eq(target.reshape(1, -1).expand_as(pred))
-    return [correct[:min(k, maxk)].reshape(-1).float().sum(0) * 100. / batch_size for k in topk]
+    return [
+        correct[: min(k, maxk)].reshape(-1).float().sum(0) * 100.0 / batch_size
+        for k in topk
+    ]
+
+
+def test_gcp_connection():
+    """Tests connection to GCP based on the presense of an environment variable.
+
+    Raises:
+        RuntimeError: If connection can't be made, it will raise a RuntimeError.
+    """
+    from google.cloud import storage
+
+    try:
+        storage.Client()
+        print("[INFO] GCP connection successful! Data/models will be saved to GCP.")
+    except:
+        raise RuntimeError(
+            "GCP connection unsuccessful, this is required for storing data and models, check GOOGLE_APPLICATION_CREDENTIALS"
+        )
