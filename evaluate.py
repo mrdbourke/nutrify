@@ -28,6 +28,11 @@ GS_BUCKET = "food_vision_bucket_with_object_versioning"
 # Setup GOOGLE_APPLICATION_CREDENTIALS
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "google-storage-key.json"
 
+# Test GCP connection
+from foodvision.utils import test_gcp_connection
+
+test_gcp_connection()
+
 # Setup device
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
