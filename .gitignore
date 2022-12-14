@@ -139,6 +139,11 @@ dmypy.json
 cython_debug/
 
 ## Extras
-*.json
+# *.json
+models/*.pth
+google-storage-key.json
 .streamlit/secrets.toml
 .DS_Store
+args.yaml
+artifacts/*
+wandb/*
