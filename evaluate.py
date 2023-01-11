@@ -5,22 +5,21 @@ to Weights & Biases and Google Storage.
 import argparse
 import os
 import random
+from typing import Optional
+import yaml
 import torch
 import timm
 import wandb
-import yaml
-
 import pandas as pd
-
-from foodvision.data_reader import FoodVisionReader
 from pathlib import Path
 from timm.models import create_model
 from timm.data import create_transform, ImageDataset
 from tqdm.auto import tqdm
 from PIL import Image
 from google.cloud import storage
-
 from sklearn.metrics import accuracy_score, classification_report
+from foodvision.data_reader import FoodVisionReader
+from foodvision.utils import test_gcp_connection
 
 # Setup Google Storage Bucket
 GS_BUCKET = "food_vision_bucket_with_object_versioning"
@@ -29,8 +28,6 @@ GS_BUCKET = "food_vision_bucket_with_object_versioning"
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "google-storage-key.json"
 
 # Test GCP connection
-from foodvision.utils import test_gcp_connection
-
 test_gcp_connection()
 
 # Setup device
@@ -39,7 +36,8 @@ DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 # Create arguments
 parser = argparse.ArgumentParser(description="Evaluate a FoodVision model.")
 group = parser.add_argument_group("Dataset parameters")
-group.add_argument("--dataset", "-d", default="", type=str, help="dataset to use")
+group.add_argument("--dataset", "-d", default="",
+                   type=str, help="dataset to use")
 group.add_argument(
     "--train-split", default="train", help="dataset train split (defailt: train)"
 )
@@ -154,21 +152,39 @@ if torch.cuda.is_available():
     torch.backends.cudnn.benchmark = True
 
 # Parse the args
+
+
 def _parse_args():
     args = parser.parse_args()
     args_text = yaml.safe_dump(args.__dict__)
 
     return args, args_text
 
+# Set random seeds
+
+
+def _set_random_seeds(seed: Optional[int]) -> None:
+    """
+    Sets random seed for random and torch modules
+
+    Args:
+        seed (Optional[int]): Desired seed. If None, seed is set as 42
+    """
+    if seed:
+        random.seed(seed)
+        torch.manual_seed(seed)
+        torch.cuda.manual_seed(seed)
+    else:
+        random.seed(42)
+        torch.manual_seed(seed)
+        torch.cuda.manual_seed(seed)
+
 
 # TODO: perhaps the args could populate a config and then the config is used throughout the script?
 args, args_text = _parse_args()
 
 # Set seeds
-# TODO: could functionize this?
-random.seed(42)
-torch.manual_seed(42)
-torch.cuda.manual_seed(42)
+_set_random_seeds()
 
 ### Setup Artifacts ###
 # TODO: should I load the Artifacts from another file? e.g. load_artifacts.py?
@@ -182,7 +198,8 @@ run = wandb.init(
 wandb.config.update(args)
 
 # Download dataset artifact
-dataset_artifact = wandb.use_artifact(args.wandb_dataset_artifact, type="dataset")
+dataset_artifact = wandb.use_artifact(
+    args.wandb_dataset_artifact, type="dataset")
 images_dir = dataset_artifact.download()
 
 # Download labels artifact
@@ -209,7 +226,8 @@ print(f"[INFO] Model path: {model_path}")
 
 # Create the model with timm
 model = timm.create_model(
-    model_name=args.model, pretrained=args.pretrained, num_classes=len(class_dict)
+    model_name=args.model, pretrained=args.pretrained, num_classes=len(
+        class_dict)
 )
 model.load_state_dict(torch.load(model_path))
 
@@ -217,6 +235,8 @@ model.load_state_dict(torch.load(model_path))
 transform = create_transform(input_size=args.image_size, is_training=False)
 
 # Add predictions to Google Storage
+
+
 def upload_to_gs(bucket_name, source_file_name, destination_blob_name):
     """Uploads a file to the bucket."""
     print(f"[INFO] Google Cloud Bucket name: {bucket_name}")
@@ -425,7 +445,8 @@ def analyze_predictions_dataframe(df, split="train"):
     classification_report_df.reset_index(inplace=True)
 
     # Rename the index column to "class_name"
-    classification_report_df.rename(columns={"index": "class_name"}, inplace=True)
+    classification_report_df.rename(
+        columns={"index": "class_name"}, inplace=True)
 
     # Create a dictionary of metrics
     metrics_dict = {
