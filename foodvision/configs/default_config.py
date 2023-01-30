@@ -22,7 +22,7 @@ config.gs_image_storage_path = "https://storage.cloud.google.com/food_vision_buc
 
 # Weights and Biases
 config.wandb_project = "test_wandb_artifacts_by_reference"
-config.wandb_job_type = "predict with trained food vision model"
+config.wandb_job_type = ""
 # config.wandb_run_tags = ["train"] # NOTE: perhaps this can be per script? so the default doesn't just always end up as "train"
 config.wandb_run_notes = "" 
 
@@ -32,7 +32,7 @@ config.wandb_labels_artifact = "food_vision_labels:latest"
 
 config.wandb_train_preds_artifact = "train_predictions:latest"
 
-# Dataset
+# Data loading and training
 config.workers = 16
 config.input_size = 224
 config.auto_augment = True
@@ -53,6 +53,19 @@ config.seed = 42
 
 # Autocorrecting (only works on training split)
 config.num_to_try_and_autocorrect = 1000
+
+# Data labelling
+config.annotations_columns_to_export = ["filename", 
+                                        "image_name", 
+                                        "class_name", 
+                                        "label", 
+                                        "split", 
+                                        "clear_or_confusing", 
+                                        "whole_food_or_dish", 
+                                        "one_food_or_multiple", 
+                                        "label_last_updated_at",
+                                        "label_source", 
+                                        "image_source"]
 
 if __name__ == "__main__":
     print(config)
