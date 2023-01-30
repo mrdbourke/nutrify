@@ -3,6 +3,7 @@
 TODO: update workflow
 * [] add image of flow chart
 * [] add steps to readme
+    * [] write about how the args work (e.g. `default_config.py` is the main source but can be overidden with args)
 * [] go through each script and make sure the workflow/loading is updated to follow the rest (e.g. load utils/other functions)
 * [] add docstrings to code + utils for better usage
 
