@@ -138,10 +138,12 @@ dmypy.json
 # Cython debug symbols
 cython_debug/
 
-## Extras
-# *.json
-models/*.pth
+# Keys
+*label_studio_api_key.json
 google-storage-key.json
+
+# Extras
+models/*.pth
 .streamlit/secrets.toml
 .DS_Store
 *args.yaml
