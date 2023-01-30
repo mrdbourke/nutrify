@@ -151,5 +151,6 @@ artifacts/*
 */artifacts/*
 wandb/*
 */wandb/*
+*wandb
 foodvision/models/*
 foodvision/predictions/*
