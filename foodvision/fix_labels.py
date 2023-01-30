@@ -19,12 +19,22 @@ import pandas as pd
 from pathlib import Path
 from tqdm.auto import tqdm
 
-from foodvision.utils import test_gcp_connection
+from foodvision.old_utils import test_gcp_connection
 
-# TODO: could these be stored better? Perhaps in a config? See: https://github.com/mrdbourke/nutrify/issues/49
-os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "google-storage-key.json"
-GS_BUCKET = "gs://food_vision_bucket_with_object_versioning"
-GS_IMAGE_STORAGE_PATH = "https://storage.cloud.google.com/food_vision_bucket_with_object_versioning/all_images/"
+# Connect to GCP
+from foodvision.utils.gcp_utils import set_gcp_credentials, test_gcp_connection
+set_gcp_credentials(path_to_key="foodvision/utils/google-storage-key.json")
+test_gcp_connection()
+
+# # TODO: could these be stored better? Perhaps in a config? See: https://github.com/mrdbourke/nutrify/issues/49
+# PATH_TO_GOOGLE_APPLICATION_CREDENTIALS = "google-storage-key.json"
+# os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = PATH_TO_GOOGLE_APPLICATION_CREDENTIALS
+
+from foodvision.configs.default_config import config
+
+PATH_TO_GOOGLE_APPLICATION_CREDENTIALS = config.path_to_gcp_credentials
+GS_BUCKET = config.gs_bucket_name
+GS_IMAGE_STORAGE_PATH = config.gs_image_storage_path
 PATH_TO_LABEL_STUDIO_API_KEY = "label_studio_api_key.json"
 
 # TODO: could reproduce this for Google Storage Key + add the functions to a checks.py file or something?
@@ -83,6 +93,7 @@ group.add_argument(
 )
 group.add_argument(
     "--wandb-pred-dataset-split",
+    "-wb_split",
     default="test_predictions:latest",
     type=str,
     help="Weights & Biases dataset split, for example 'test_predictions:latest' or 'train_predictions:latest'",
@@ -441,6 +452,13 @@ def export_tasks_to_label_studio(label_studio_instance, label_config, label_task
 
     # TODO: could I connect Google Storage as an export option here?
     # see here: https://labelstud.io/sdk/project.html#label_studio_sdk.project.Project.connect_google_export_storage
+    # Note: this requires having Google Application Credentials setup
+    # TODO: add print out of where the bucket is going to (e.g. bucket name and prefix)
+    project.connect_google_export_storage(
+        bucket=GS_BUCKET,
+        prefix=f"label_studio_exports/classification",
+        google_application_credentials=PATH_TO_GOOGLE_APPLICATION_CREDENTIALS,
+    )
 
     # Print out the URL of Label Studio to access the access the tasks
     print(f"[INFO] View and work on Label Studio project at {project.url}")

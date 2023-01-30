@@ -144,6 +144,10 @@ models/*.pth
 google-storage-key.json
 .streamlit/secrets.toml
 .DS_Store
-args.yaml
+*args.yaml
 artifacts/*
+*/artifacts/*
 wandb/*
+*/wandb/*
+foodvision/models/*
+predicitions/*
