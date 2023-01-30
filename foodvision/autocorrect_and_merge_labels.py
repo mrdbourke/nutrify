@@ -52,6 +52,9 @@ WANDB_MODEL = config.wandb_model_artifact
 WANDB_DATASET = config.wandb_dataset_artifact
 WANDB_LABELS = config.wandb_labels_artifact
 
+# Annotations columns to export (target columns for labels file to be uploaded to GCP)
+columns_to_export = config.annotations_columns_to_export
+
 # Setup Weights and Biases
 from utils.wandb_utils import wandb_load_artifact, wandb_download_and_load_labels
 
@@ -406,8 +409,8 @@ def check_for_differences_between_df(df1, df2, columns_to_exclude: list=None):
 
 # Check for differences between updated_annotations and original_annotations
 num_differences = check_for_differences_between_df(updated_annotations, 
-                                                  original_annotations, 
-                                                  columns_to_exclude=["label_last_updated_at", "label_source"])
+                                                   original_annotations, 
+                                                   columns_to_exclude=["label_last_updated_at", "label_source"])
 
 assert num_differences == len(clip_blip_match_updated_labels), "The number of rows in changed_rows should be the same as the number of rows in clip_blip_match_updated_labels"
 
@@ -415,18 +418,6 @@ assert num_differences == len(clip_blip_match_updated_labels), "The number of ro
 GS_BUCKET_NAME = config.gs_bucket_name
 UPDATED_ANNOTATIONS_TARGET_FILENAME = "updated_annotations.csv"
 ORIGINAL_ANNOTATIONS_TARGET_FILENAME = "annotations.csv"
-
-# Export the updated annotations to a CSV
-columns_to_export = ["filename", 
-                     "image_name", 
-                     "class_name", 
-                     "label", 
-                     "split", 
-                     "clear_or_confusing", 
-                     "whole_food_or_dish", 
-                     "one_food_or_multiple", 
-                     "label_last_updated_at",
-                     "label_source"]
 
 # TODO: Check if the updated_annotations_reset_index and the original_annotations actually differ, if so save them and upload them, else exit
 from utils.gcp_utils import upload_to_gs, rename_blob
@@ -436,7 +427,8 @@ from utils.misc import get_now_time
 if num_differences > 0:
     print(f"[INFO] {num_differences} changes to annotations.csv, updated label files and original annotations are different, saving the updated annotations.csv file and uploading it to Google Storage...")
 
-    # Export the updated_annotations_reset_index to a csv
+    # Export the updated_annotations to a csv
+    print(f"[INFO] Exporting columns: {columns_to_export}...")
     updated_annotations[columns_to_export].to_csv(UPDATED_ANNOTATIONS_TARGET_FILENAME, index=False)
 
     # Upload the updated CSV to Google Storage
