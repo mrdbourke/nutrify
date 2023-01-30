@@ -12,15 +12,18 @@ from types import SimpleNamespace
 # Define the default configuration
 config = SimpleNamespace(**{})
 
+# Keys
+config.path_to_label_studio_api_key = "utils/label_studio_api_key.json"
+config.path_to_gcp_credentials = "utils/google-storage-key.json" # TODO: make sure this path exists, else error
+
 # Paths
-config.path_to_gcp_credentials = "foodvision/utils/google-storage-key.json" # TODO: make sure this path exists, else error
 config.gs_bucket_name = "food_vision_bucket_with_object_versioning"
 config.gs_image_storage_path = "https://storage.cloud.google.com/food_vision_bucket_with_object_versioning/all_images/"
 
 # Weights and Biases
 config.wandb_project = "test_wandb_artifacts_by_reference"
 config.wandb_job_type = "predict with trained food vision model"
-config.wandb_run_tags = ["train"]
+# config.wandb_run_tags = ["train"] # NOTE: perhaps this can be per script? so the default doesn't just always end up as "train"
 config.wandb_run_notes = "" 
 
 config.wandb_model_artifact = "trained_model:latest"
@@ -30,7 +33,7 @@ config.wandb_labels_artifact = "food_vision_labels:latest"
 config.wandb_train_preds_artifact = "train_predictions:latest"
 
 # Dataset
-config.workers = 4
+config.workers = 16
 config.input_size = 224
 config.auto_augment = True
 

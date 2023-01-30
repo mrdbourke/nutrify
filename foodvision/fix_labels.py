@@ -19,40 +19,11 @@ import pandas as pd
 from pathlib import Path
 from tqdm.auto import tqdm
 
-from foodvision.old_utils import test_gcp_connection
+from utils.wandb_utils import wandb_load_artifact
 
-# Connect to GCP
-from foodvision.utils.gcp_utils import set_gcp_credentials, test_gcp_connection
-set_gcp_credentials(path_to_key="foodvision/utils/google-storage-key.json")
-test_gcp_connection()
-
-# # TODO: could these be stored better? Perhaps in a config? See: https://github.com/mrdbourke/nutrify/issues/49
-# PATH_TO_GOOGLE_APPLICATION_CREDENTIALS = "google-storage-key.json"
-# os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = PATH_TO_GOOGLE_APPLICATION_CREDENTIALS
-
-from foodvision.configs.default_config import config
-
-PATH_TO_GOOGLE_APPLICATION_CREDENTIALS = config.path_to_gcp_credentials
-GS_BUCKET = config.gs_bucket_name
-GS_IMAGE_STORAGE_PATH = config.gs_image_storage_path
-PATH_TO_LABEL_STUDIO_API_KEY = "label_studio_api_key.json"
-
-# TODO: could reproduce this for Google Storage Key + add the functions to a checks.py file or something?
-# Check that the PATH_TO_LABEL_STUDIO_API_KEY is a JSON file that exists
-def check_label_studio_api_key(path_to_label_studio_api_key):
-    if not os.path.exists(path_to_label_studio_api_key):
-        raise ValueError(
-            f"PATH_TO_LABEL_STUDIO_API_KEY file not found, you passed {path_to_label_studio_api_key}."
-        )
-    # Check the file is a JSON file
-    if not path_to_label_studio_api_key.endswith(".json"):
-        raise ValueError(
-            f"PATH_TO_LABEL_STUDIO_API_KEY file must be a JSON file, you passed {path_to_label_studio_api_key}."
-        )
-
-
-check_label_studio_api_key(PATH_TO_LABEL_STUDIO_API_KEY)
-
+# Create config parser (to get baseline config parameters)
+config_parser = parser = argparse.ArgumentParser(description="Fix labels config file")
+parser.add_argument("-c", "--config", default="configs.default_config", type=str, help="config file path (default: configs.default_config)")
 
 # Create argument parser
 parser = argparse.ArgumentParser(description="Fix FoodVision labels with Label Studio.")
@@ -109,22 +80,68 @@ group.add_argument(
     help="Number of most wrong samples to find (default 20)",
 )
 
-# Parse the args
+# See: https://github.com/rwightman/pytorch-image-models/blob/3aa31f537d5fbf6be8f1aaf5a36f6bbb4a55a726/train.py#L352
+# See here: https://docs.python.org/3/library/argparse.html#partial-parsing 
 def _parse_args():
-    args = parser.parse_args()
+    """Parses command line arguments.
+
+    Default behaviour:
+    - take in config file (e.g. configs.default_config.py) and use those as defaults
+    - take in command line arguments and override defaults if necessary
+
+    See:
+    - https://github.com/rwightman/pytorch-image-models/blob/3aa31f537d5fbf6be8f1aaf5a36f6bbb4a55a726/train.py#L352
+    - https://docs.python.org/3/library/argparse.html#partial-parsing 
+    """
+    config_args, remaining = config_parser.parse_known_args()
+
+    # Parse config file
+    if config_args.config:
+        from importlib import import_module
+        # See here: https://stackoverflow.com/a/67692/12434862
+        # This is equivalent to: from configs.default_config import config
+        config_module = getattr(import_module(config_args.config), "config")
+        # print("\n#### Config module:\n")
+        # print(config_module)
+        parser.set_defaults(**config_module.__dict__)
+
+    args = parser.parse_args(remaining)
     args_text = yaml.safe_dump(args.__dict__)
 
     return args, args_text
 
+# Parse arguments
+args, args_text = _parse_args()
+
+GS_BUCKET = args.gs_bucket_name
+GS_IMAGE_STORAGE_PATH = args.gs_image_storage_path
+PATH_TO_LABEL_STUDIO_API_KEY = args.path_to_label_studio_api_key
+
+# TODO: could reproduce this for Google Storage Key + add the functions to a checks.py file or something?
+# Check that the PATH_TO_LABEL_STUDIO_API_KEY is a JSON file that exists
+def check_label_studio_api_key(path_to_label_studio_api_key):
+    if not os.path.exists(path_to_label_studio_api_key):
+        raise ValueError(
+            f"PATH_TO_LABEL_STUDIO_API_KEY file not found, you passed {path_to_label_studio_api_key}."
+        )
+    # Check the file is a JSON file
+    if not path_to_label_studio_api_key.endswith(".json"):
+        raise ValueError(
+            f"PATH_TO_LABEL_STUDIO_API_KEY file must be a JSON file, you passed {path_to_label_studio_api_key}."
+        )
+
+check_label_studio_api_key(args.path_to_label_studio_api_key)
+
 
 def main():
     # Test GCP connection before proceeding
+    # Connect to GCP
+    from utils import set_gcp_credentials, test_gcp_connection
+    set_gcp_credentials(path_to_key=args.path_to_gcp_credentials)
     test_gcp_connection()
 
     # Setup and check Label Studio connection
     label_studio_instance = check_connection_to_label_studio()
-
-    args, args_text = _parse_args()
 
     # TODO: potentially put these in a config? e.g. config.py, see: https://github.com/mrdbourke/nutrify/issues/49
     WANDB_PROJECT = args.wandb_project
@@ -159,16 +176,16 @@ def main():
     wandb.config.update(args)
 
     # Get images
-    images_dir = load_artifact(
+    images_dir = wandb_load_artifact(
         wandb_run=run, artifact_name=WANDB_DATASET, artifact_type="dataset"
     )
     print(f"[INFO] Images directory: {images_dir}.")
 
-    # Get labels from Weights & Biases
-    class_names, class_dict, reverse_class_dict = download_and_load_labels_from_wandb(
-        wandb_run=run,
-        wandb_labels_artifact_name=WANDB_LABELS,
-    )
+    # Download labels artifact
+    from utils.wandb_utils import wandb_download_and_load_labels
+
+    annotations, class_names, class_dict, reverse_class_dict, labels_path = wandb_download_and_load_labels(wandb_run=run, 
+                                                                                                            wandb_labels_artifact_name=args.wandb_labels_artifact)
 
     # Download the predictions DataFrame
     df = download_and_load_predictions_from_wandb(
@@ -313,60 +330,11 @@ def main():
         label_studio_labeling_interface_html_string,
     )
 
-
-# TODO: move this to utils? Or potentially wandb_utils?
-def load_artifact(wandb_run, artifact_name, artifact_type):
-    artifact = wandb_run.use_artifact(artifact_name, type=artifact_type)
-    artifact_dir = artifact.download()
-    return artifact_dir
-
-
-### Get the truth labels
-def download_and_load_labels_from_wandb(
-    wandb_run,
-    wandb_labels_artifact_name,
-    wandb_labels_artifact_type="labels",
-    filename="annotations.csv",  # TODO: make this a changeable parameter?
-    class_name_col="class_name",
-    label_col="label",
-):
-
-    # Get labels from W&B Artifacts
-    labels_dir = load_artifact(
-        wandb_run=wandb_run,
-        artifact_name=wandb_labels_artifact_name,
-        artifact_type=wandb_labels_artifact_type,
-    )
-    print(f"[INFO] Labels directory: {labels_dir}")
-
-    # Create labels path
-    labels_path = Path(labels_dir) / filename
-    print(f"[INFO] Labels path: {labels_path}")
-    annotations = pd.read_csv(labels_path)
-
-    # Create a dictionary of class_names and labels
-    class_names = annotations[class_name_col].to_list()
-    class_labels = annotations[label_col].to_list()
-    class_dict = dict(sorted(dict(zip(class_labels, class_names)).items()))
-
-    # Reverse class_dict keys and values
-    reverse_class_dict = dict(zip(class_dict.values(), class_dict.keys()))
-    print(f"[INFO] Working with: {len(class_dict)} classes")
-
-    # Filter class_names for unique items
-    class_names = sorted(list(set(class_names)))
-
-    assert (
-        len(class_names) == len(class_dict) == len(reverse_class_dict)
-    ), "Length of class_names, class_dict and reverse_class_dict should be the same"
-
-    return class_names, class_dict, reverse_class_dict
-
-
 def download_and_load_predictions_from_wandb(
     wandb_run, artifact_name, artifact_type="predictions"
-):
-    predictions_dir = load_artifact(
+):  
+    from utils.wandb_utils import wandb_load_artifact
+    predictions_dir = wandb_load_artifact(
         wandb_run=wandb_run, artifact_name=artifact_name, artifact_type=artifact_type
     )
 
@@ -457,7 +425,7 @@ def export_tasks_to_label_studio(label_studio_instance, label_config, label_task
     project.connect_google_export_storage(
         bucket=GS_BUCKET,
         prefix=f"label_studio_exports/classification",
-        google_application_credentials=PATH_TO_GOOGLE_APPLICATION_CREDENTIALS,
+        google_application_credentials=args.path_to_gcp_credentials,
     )
 
     # Print out the URL of Label Studio to access the access the tasks

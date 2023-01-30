@@ -32,7 +32,7 @@ test_gcp_connection()
 
 # Try and import LAVIS
 try:
-    print(f"[INFO] Import LAVIS (see: https://github.com/salesforce/LAVIS)")
+    print(f"[INFO] Attempting to import LAVIS (see: https://github.com/salesforce/LAVIS)")
     from lavis.models import load_model_and_preprocess
     print(f"[INFO] Successfully imported LAVIS.")
 except:

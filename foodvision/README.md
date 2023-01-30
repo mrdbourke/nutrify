@@ -1,5 +1,11 @@
 # Scripts and modules for training/evaluating models
 
+TODO: update workflow
+* [] add image of flow chart
+* [] add steps to readme
+* [] go through each script and make sure the workflow/loading is updated to follow the rest (e.g. load utils/other functions)
+* [] add docstrings to code + utils for better usage
+
 Foodvision = the ML model that powers Nutrify's computer vision system. 
 
 Going to store scripts in here for training models and evaluating them.
