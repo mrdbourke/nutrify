@@ -217,9 +217,8 @@ def _parse_args():
 # TODO: perhaps the args could populate a config and then the config is used throughout the script?
 args, args_text = _parse_args()
 
-
+# TODO: does this have to be here?
 output_dir = Path(args.output)
-# TODO: could log args to Wandb as a dict for the run?
 with open(os.path.join(output_dir, "args.yaml"), "w") as f:
     f.write(args_text)
 
@@ -244,9 +243,10 @@ else:
 
 if args.auto_augment:
     print(f"[INFO] Using auto augment, strategy: {args.auto_augment}")
+    train_transform = create_transform(input_size=args.image_size, is_training=True, auto_augment="rand-m9-mstd0.5")
 else:
     print("[INFO] Not using auto augment, normal image transformations will be used.")
-
+    train_transform = create_transform(input_size=args.image_size, is_training=True)
 
 # Set seeds
 from utils import seed_everything
@@ -260,11 +260,9 @@ seed_everything(args.seed)
 run = wandb.init(
     project=args.wandb_project,
     job_type=args.wandb_job_type,
-    tags=["training"],
+    tags=["training"], # TODO set this on args
     notes=args.wandb_run_notes,
 )
-
-# Weights & Biases setup to load artifacts
 
 # Add args config to Weights & Biases
 wandb.config.update(args)
@@ -285,13 +283,6 @@ print(f"[INFO] Images directory: {images_dir}")
 
 annotations, class_names, class_dict, reverse_class_dict, labels_path = wandb_download_and_load_labels(wandb_run=run,
 wandb_labels_artifact_name=args.wandb_labels_artifact)
-
-
-# TODO create train transform
-if args.auto_augment:
-    train_transform = create_transform(input_size=args.image_size, is_training=True, auto_augment="rand-m9-mstd0.5")
-else:
-    train_transform = create_transform(input_size=args.image_size, is_training=True)
 
 # Create datasets
 # TODO: maybe a good idea to print out how many samples are in each dataset?
@@ -354,8 +345,7 @@ def create_model(model_name=args.model,
     model = timm.create_model( 
         model_name=model_name, 
         pretrained=pretrained, 
-        num_classes=num_classes,
-        img_size=args.image_size
+        num_classes=num_classes
     )
 
     # Set all parameters to not requiring gradients
@@ -384,7 +374,6 @@ loss_fn = nn.CrossEntropyLoss(label_smoothing=args.label_smoothing)
 optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
 
 # TODO: make a "validate every... epoch" for example could validate every 5 epochs or something
-
 
 # TODO: make this function usable (or similar to timm's train.py)
 def train_one_epoch(
@@ -558,11 +547,7 @@ vanilla_pytorch_results = train(
 
 # Create a function to save to Google Storage
 # TODO: make an export function to save the model to different store types
-# TODO: put this file into a utils dir (see utls/gcp_utils.py)
-from google.cloud import storage
-
 from utils.gcp_utils import upload_to_gs
-
 
 # TODO: move this into a model utils?
 def save_model(model: torch.nn.Module, target_dir: str, model_name: str):
@@ -598,6 +583,7 @@ def save_model(model: torch.nn.Module, target_dir: str, model_name: str):
 ### Save the model
 model_export_dir = Path(args.model_out_dir)
 # TODO: Save the model with some kind of time/name stamp
+
 # Get the current time
 from utils import get_now_time
 
