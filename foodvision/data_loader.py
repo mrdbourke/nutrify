@@ -2,7 +2,10 @@ import pandas as pd
 from pathlib import Path
 import timm
 
-import polars as pl
+try:
+    import polars as pl
+except:
+    print(f"[INFO] Polars not installed, using Pandas instead...")
 
 ########
 ### Try Polars instead of Pandas
