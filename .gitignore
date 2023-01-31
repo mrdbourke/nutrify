@@ -154,3 +154,4 @@ wandb/*
 *wandb
 foodvision/models/*
 foodvision/predictions/*
+*_annotations.csv

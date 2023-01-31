@@ -351,10 +351,11 @@ def create_model(model_name=args.model,
                  pretrained=args.pretrained,
                  num_classes=len(class_dict)):
 
-    model = timm.create_model(
+    model = timm.create_model( 
         model_name=model_name, 
         pretrained=pretrained, 
-        num_classes=num_classes
+        num_classes=num_classes,
+        img_size=args.image_size
     )
 
     # Set all parameters to not requiring gradients

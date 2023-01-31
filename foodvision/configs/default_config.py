@@ -23,8 +23,8 @@ config.gs_image_storage_path = "https://storage.cloud.google.com/food_vision_buc
 # Weights and Biases
 config.wandb_project = "test_wandb_artifacts_by_reference"
 config.wandb_job_type = ""
-# config.wandb_run_tags = ["train"] # NOTE: perhaps this can be per script? so the default doesn't just always end up as "train"
 config.wandb_run_notes = "" 
+config.wandb_run_tags = [""] # NOTE: perhaps this can be per script? so the default doesn't just always end up as "train"
 
 config.wandb_model_artifact = "trained_model:latest"
 config.wandb_dataset_artifact = "food_vision_199_classes_images:latest"
