@@ -5,39 +5,31 @@ to Weights & Biases and Google Storage.
 import argparse
 import os
 import random
-from typing import Optional
-import yaml
 import torch
 import timm
 import wandb
+import yaml
+
 import pandas as pd
+
+from data_loader import FoodVisionReader
 from pathlib import Path
 from timm.models import create_model
 from timm.data import create_transform, ImageDataset
 from tqdm.auto import tqdm
 from PIL import Image
 from google.cloud import storage
+
 from sklearn.metrics import accuracy_score, classification_report
-from foodvision.data_reader import FoodVisionReader
-from foodvision.utils import test_gcp_connection
 
-# Setup Google Storage Bucket
-GS_BUCKET = "food_vision_bucket_with_object_versioning"
-
-# Setup GOOGLE_APPLICATION_CREDENTIALS
-os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "google-storage-key.json"
-
-# Test GCP connection
-test_gcp_connection()
-
-# Setup device
-DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+# Create config parser (to get baseline config parameters)
+config_parser = parser = argparse.ArgumentParser(description="Training config file")
+parser.add_argument("-c", "--config", default="configs.default_config", type=str, help="config file path (default: configs.default_config)")
 
 # Create arguments
 parser = argparse.ArgumentParser(description="Evaluate a FoodVision model.")
 group = parser.add_argument_group("Dataset parameters")
-group.add_argument("--dataset", "-d", default="",
-                   type=str, help="dataset to use")
+group.add_argument("--dataset", "-d", default="", type=str, help="dataset to use")
 group.add_argument(
     "--train-split", default="train", help="dataset train split (defailt: train)"
 )
@@ -49,7 +41,7 @@ group.add_argument(
 )
 group.add_argument(
     "--workers",
-    default=4,
+    default=16,
     type=int,
     help="number of workers for dataloader (default :4)",
 )
@@ -100,12 +92,12 @@ group = parser.add_argument_group("Weights and Biases parameters")
 group.add_argument(
     "--wandb-project",
     default="test_wandb_artifacts_by_reference",
-    help="Weights & Biases project name",
+    help="Weights & Biases project name, e.g. 'food_vision' (default: 'test_wandb_artifacts_by_reference')",
 )
 group.add_argument(
     "--wandb-job-type",
     default="predict with trained food vision model",
-    help="Weights & Biases job type",
+    help="Weights & Biases job type, e.g. 'predict with trained food vision model' (default: 'predict with trained food vision model')",
 )
 group.add_argument(
     "--wandb-dataset-artifact",
@@ -119,7 +111,7 @@ group.add_argument(
 )
 group.add_argument(
     "--wandb-models-artifact",
-    default="trained_model:best",
+    default="trained_model:latest",
     help="Weights & Biases trained model artifact name",
 )
 group.add_argument(
@@ -127,6 +119,12 @@ group.add_argument(
     default=["predict_and_evaluate"],
     type=list,
     help="Weights & Biases run tags, for example (['predict_and_evaluate'])",
+)
+group.add_argument(
+    "--wandb-run-notes",
+    "-wb_notes",
+    default="",
+    help="Weights & Biases run notes, similar to writing a git commit message, 'what did you do?' (default '')",
 )
 
 # Misc parameters
@@ -145,79 +143,84 @@ group.add_argument(
     help="path to model output directory (default: 'predictions')",
 )
 
+# See: https://github.com/rwightman/pytorch-image-models/blob/3aa31f537d5fbf6be8f1aaf5a36f6bbb4a55a726/train.py#L352
+# See here: https://docs.python.org/3/library/argparse.html#partial-parsing 
+def _parse_args():
+    """Parses command line arguments.
+
+    Default behaviour:
+    - take in config file (e.g. configs.default_config.py) and use those as defaults
+    - take in command line arguments and override defaults if necessary
+
+    See:
+    - https://github.com/rwightman/pytorch-image-models/blob/3aa31f537d5fbf6be8f1aaf5a36f6bbb4a55a726/train.py#L352
+    - https://docs.python.org/3/library/argparse.html#partial-parsing 
+    """
+    config_args, remaining = config_parser.parse_known_args()
+
+    # Parse config file
+    if config_args.config:
+        from importlib import import_module
+        # See here: https://stackoverflow.com/a/67692/12434862
+        # This is equivalent to: from configs.default_config import config
+        config_module = getattr(import_module(config_args.config), "config")
+        # print("\n#### Config module:\n")
+        # print(config_module)
+        parser.set_defaults(**config_module.__dict__)
+
+    args = parser.parse_args(remaining)
+    args_text = yaml.safe_dump(args.__dict__)
+
+    return args, args_text
+
+# TODO: perhaps the args could populate a config and then the config is used throughout the script?
+args, args_text = _parse_args()
+
+# Connect to GCP
+from utils import set_gcp_credentials, test_gcp_connection
+set_gcp_credentials(path_to_key=args.path_to_gcp_credentials)
+test_gcp_connection()
+
+GS_BUCKET = args.gs_bucket_name
+
 # Set devices
 if torch.cuda.is_available():
     device = torch.device("cuda")
     torch.backends.cuda.matmul.allow_tf32 = True
     torch.backends.cudnn.benchmark = True
 
-# Parse the args
-
-
-def _parse_args():
-    args = parser.parse_args()
-    args_text = yaml.safe_dump(args.__dict__)
-
-    return args, args_text
-
-# Set random seeds
-
-
-def _set_random_seeds(seed: Optional[int]) -> None:
-    """
-    Sets random seed for random and torch modules
-
-    Args:
-        seed (Optional[int]): Desired seed. If None, seed is set as 42
-    """
-    if seed:
-        random.seed(seed)
-        torch.manual_seed(seed)
-        torch.cuda.manual_seed(seed)
-    else:
-        random.seed(42)
-        torch.manual_seed(seed)
-        torch.cuda.manual_seed(seed)
-
-
-# TODO: perhaps the args could populate a config and then the config is used throughout the script?
-args, args_text = _parse_args()
-
 # Set seeds
-_set_random_seeds()
+from utils import seed_everything
+seed_everything(args.seed)
 
-### Setup Artifacts ###
-# TODO: should I load the Artifacts from another file? e.g. load_artifacts.py?
-# TODO: can init Weights & Biases to log a config
-# Configuration info: Log hyperparameters, a link to your dataset, or the name of the architecture you're using as config parameters, passed in like this: wandb.init(config=your_config_dictionary).
+# Setup Weights & Biases
 run = wandb.init(
-    project=args.wandb_project, job_type=args.wandb_job_type, tags=args.wandb_run_tags
+    project=args.wandb_project,
+    job_type=args.wandb_job_type,
+    tags=args.wandb_run_tags,
+    notes=args.wandb_run_notes,
 )
 
 # Add args config to Weights & Biases
 wandb.config.update(args)
 
 # Download dataset artifact
-dataset_artifact = wandb.use_artifact(
-    args.wandb_dataset_artifact, type="dataset")
-images_dir = dataset_artifact.download()
+from utils.wandb_utils import wandb_load_artifact
+images_dir = wandb_load_artifact(
+    wandb_run=run,
+    artifact_name=args.wandb_dataset_artifact,
+    artifact_type="dataset")
 
 # Download labels artifact
-labels_at = run.use_artifact(args.wandb_labels_artifact, type="labels")
-labels_dir = labels_at.download()
-labels_path = Path(labels_dir) / "annotations.csv"
-print(f"[INFO] Labels path: {labels_path}")
-annotations = pd.read_csv(labels_path)
+from utils.wandb_utils import wandb_download_and_load_labels
 
-# Create a dictionary of class_names and labels
-class_names = annotations["class_name"].to_list()
-class_labels = annotations["label"].to_list()
-class_dict = dict(sorted(dict(zip(class_labels, class_names)).items()))
-print(f"[INFO] Working with: {len(class_dict)} classes")
+annotations, class_names, class_dict, reverse_class_dict, labels_path = wandb_download_and_load_labels(wandb_run=run, 
+                                                                                                            wandb_labels_artifact_name=args.wandb_labels_artifact)
 
 # Download model artifact
-model_artifact = run.use_artifact(args.wandb_models_artifact, type="model")
-model_at_dir = model_artifact.download()
+model_at_dir = wandb_load_artifact(wandb_run=run,
+                                   artifact_name=args.wandb_models_artifact,
+                                   artifact_type="model")
 print(f"[INFO] Model artifact directory: {model_at_dir}")
 
 # Get list of all files with "*.pth" in model_at_dir
@@ -226,8 +229,7 @@ print(f"[INFO] Model path: {model_path}")
 
 # Create the model with timm
 model = timm.create_model(
-    model_name=args.model, pretrained=args.pretrained, num_classes=len(
-        class_dict)
+    model_name=args.model, pretrained=args.pretrained, num_classes=len(class_dict)
 )
 model.load_state_dict(torch.load(model_path))
 
@@ -235,37 +237,7 @@ model.load_state_dict(torch.load(model_path))
 transform = create_transform(input_size=args.image_size, is_training=False)
 
 # Add predictions to Google Storage
-
-
-def upload_to_gs(bucket_name, source_file_name, destination_blob_name):
-    """Uploads a file to the bucket."""
-    print(f"[INFO] Google Cloud Bucket name: {bucket_name}")
-    print(
-        f"[INFO] Uploading {source_file_name} to Google Storage as: {destination_blob_name}..."
-    )
-    storage_client = storage.Client()
-    bucket = storage_client.bucket(bucket_name)
-    print(f"[INFO] Connected to bucket: {bucket_name}")
-    blob = bucket.blob(destination_blob_name)
-
-    blob.upload_from_filename(source_file_name)
-
-    print(
-        f"[INFO] File {source_file_name} uploaded to Google Storage as: {destination_blob_name}."
-    )
-    print(f"[INFO] File size: {blob.size} bytes")
-
-    # TODO: Make the blob public -- do I want this to happen?
-    # blob.make_public()
-    # print(f"[INFO] Blob public URL: {blob.public_url}")
-
-    data_stored_at = "gs://" + str(Path(bucket_name, blob.name))
-
-    print(f"[INFO] Data stored at: {data_stored_at}")
-
-    # print(f"[INFO] Blob download URL: {blob._get_download_url()}")
-
-    return data_stored_at
+from utils import upload_to_gs
 
 
 def pred_on_image(
@@ -445,8 +417,7 @@ def analyze_predictions_dataframe(df, split="train"):
     classification_report_df.reset_index(inplace=True)
 
     # Rename the index column to "class_name"
-    classification_report_df.rename(
-        columns={"index": "class_name"}, inplace=True)
+    classification_report_df.rename(columns={"index": "class_name"}, inplace=True)
 
     # Create a dictionary of metrics
     metrics_dict = {
@@ -481,7 +452,8 @@ for pred_split_to_predict_on in pred_splits_to_predict_on:
         image_root=images_dir,
         label_root=labels_path,
         class_to_idx=class_dict,
-        split=pred_split_to_predict_on,
+        quick_experiment=args.quick_experiment,
+        split=pred_split_to_predict_on
     )
 
     # Make predictions on all images (default) or a random sample of images
@@ -501,7 +473,8 @@ for pred_split_to_predict_on in pred_splits_to_predict_on:
         )
 
     # Loop through samples and make predictions, then save predictions to dictionary
-    for i in tqdm(random_sample_idxs):
+    # for i in track(random_sample_idxs, description="Making predictions..."):
+    for i in tqdm(random_sample_idxs, desc="Making predictions...", total=len(random_sample_idxs)):
         img, label = food_vision_reader[i]
 
         filename = Path(food_vision_reader._filename(index=i))

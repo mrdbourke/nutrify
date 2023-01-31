@@ -1,49 +1,47 @@
 """
 Training script for FoodVision models.
-
 TODO: adapt the script to use more elegant features such as in: 
 * Timm training script: https://github.com/rwightman/pytorch-image-models/blob/main/train.py 
 * Timm training script guide: 
 * Potentially could put the model into a Hugging Face Transformer and then use the model
     with the Transformers class?
+
+Style guide: https://google.github.io/styleguide/pyguide.html 
 """
 import argparse
 import json
 import os
-import wandb
+from contextlib import \
+    suppress  # suppresses amp_autocast if it's not available
+from pathlib import Path
+from typing import Dict, List
 import yaml
 
-import timm
 import torch
 from torch import nn
 from torch.utils.data import DataLoader
 
+import timm
+from timm.data import ImageDataset, create_transform
 
-from pathlib import Path
-from typing import Dict, List
-from contextlib import suppress  # suppresses amp_autocast if it's not available
+import wandb
+from data_loader import FoodVisionReader
 
-# Setup Google Storage Bucket
-GS_BUCKET = "food_vision_bucket_with_object_versioning"
-
-# Setup GOOGLE_APPLICATION_CREDENTIALS
-os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "google-storage-key.json"
-
-# Test GCP connection
-from foodvision.utils import test_gcp_connection
-
+# Connect to GCP
+from utils.gcp_utils import set_gcp_credentials, test_gcp_connection
+set_gcp_credentials(path_to_key="utils/google-storage-key.json")
 test_gcp_connection()
 
-# Setup the device
-DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+# Create config parser
+config_parser = parser = argparse.ArgumentParser(description="Training config file")
+parser.add_argument("-c", "--config", default="configs.default_config", type=str, help="config file path (default: configs.default_config)")
 
-# TODO: make it so you can import parameters with YAML if needed?
-
-# Create arguments
+# Create regular parser
 parser = argparse.ArgumentParser(description="Train a FoodVision model.")
 
 # Create dataset parameters
 group = parser.add_argument_group("Dataset parameters")
+group.add_argument("--polars_or_pandas", "-p", default="pandas", type=str, help="use pandas or polars to load DataFrame for DataLoader")
 group.add_argument("--dataset", "-d", default="", type=str, help="dataset to use")
 group.add_argument(
     "--train_split", default="train", help="dataset train split (defailt: train)"
@@ -66,18 +64,31 @@ group.add_argument(
     type=int,
     help="image size to resize images to (default: 224)",
 )
+group.add_argument(
+    "--auto_augment",
+    "-aa",
+    default=True,
+    type=bool,
+    help="whether to use auto augmentation, default value is 'rand-m9-mstd0.5', see https://timm.fast.ai/RandAugment for more (default: True)",
+)
+group.add_argument(
+    "--pin_memory",
+    default=True,
+    type=bool,
+    help="whether to pin memory for dataloader (default: True)",
+)
 
 # Create model parameters
 group = parser.add_argument_group("Model parameters")
 group.add_argument(
     "--model",
     default="coatnext_nano_rw_224",
-    help="model to use (default: 'coatnext_nana_rw_224'",
+    help="model to use (default: 'coatnext_nana_rw_224')",
 )
 group.add_argument(
     "--pretrained", default=True, help="use pretrained weights (default: True)"
 )
-# TODO: add num_classes? as arg
+# TODO: add num_classes? as arg - this could be inferred from data?
 
 # Create training parameters
 # TODO: creating training parameter for mixed precision training
@@ -98,7 +109,7 @@ group.add_argument(
 group.add_argument(
     "--label_smoothing",
     type=float,
-    default=0.05,
+    default=0.1,
     help="label smoothing value to use in loss function (default: 0.1)",
 )
 group.add_argument(
@@ -140,9 +151,17 @@ group.add_argument(
     default="food_vision_labels:latest",
     help="Weights & Biases labels artifact name",
 )
+group.add_argument(
+    "--wandb-run-notes",
+    "-wb_notes",
+    default="",
+    help="Weights & Biases run notes, similar to writing a git commit message, 'what did you do?' (default '')",
+)
 
 # Misc parameters
 group = parser.add_argument_group("Misc parameters")
+group.add_argument('--seed', type=int, default=42, metavar='S',
+                   help='random seed (default: 42)')
 group.add_argument(
     "--output",
     default="",
@@ -163,9 +182,33 @@ group.add_argument(
     help="path to model output directory (default: 'models')",
 )
 
-# Parse the args
+
+# See: https://github.com/rwightman/pytorch-image-models/blob/3aa31f537d5fbf6be8f1aaf5a36f6bbb4a55a726/train.py#L352
+# See here: https://docs.python.org/3/library/argparse.html#partial-parsing 
 def _parse_args():
-    args = parser.parse_args()
+    """Parses command line arguments.
+
+    Default behaviour:
+    - take in config file (e.g. configs.default_config.py) and use those as defaults
+    - take in command line arguments and override defaults if necessary
+
+    See:
+    - https://github.com/rwightman/pytorch-image-models/blob/3aa31f537d5fbf6be8f1aaf5a36f6bbb4a55a726/train.py#L352
+    - https://docs.python.org/3/library/argparse.html#partial-parsing 
+    """
+    config_args, remaining = config_parser.parse_known_args()
+
+    # Parse config file
+    if config_args.config:
+        from importlib import import_module
+        # See here: https://stackoverflow.com/a/67692/12434862
+        # This is equivalent to: from configs.default_config import config
+        config_module = getattr(import_module(config_args.config), "config")
+        # print("\n#### Config module:\n")
+        # print(config_module)
+        parser.set_defaults(**config_module.__dict__)
+
+    args = parser.parse_args(remaining)
     args_text = yaml.safe_dump(args.__dict__)
 
     return args, args_text
@@ -173,6 +216,7 @@ def _parse_args():
 
 # TODO: perhaps the args could populate a config and then the config is used throughout the script?
 args, args_text = _parse_args()
+
 
 output_dir = Path(args.output)
 # TODO: could log args to Wandb as a dict for the run?
@@ -198,11 +242,15 @@ else:
         "[INFO] Not using mixed precision training. Training with dtype: torch.float32"
     )
 
+if args.auto_augment:
+    print(f"[INFO] Using auto augment, strategy: {args.auto_augment}")
+else:
+    print("[INFO] Not using auto augment, normal image transformations will be used.")
+
 
 # Set seeds
-# TODO: could functionize this?
-torch.manual_seed(42)
-torch.cuda.manual_seed(42)
+from utils import seed_everything
+seed_everything(args.seed)
 
 
 ### Setup Artifacts ###
@@ -210,133 +258,65 @@ torch.cuda.manual_seed(42)
 # TODO: can init Weights & Biases to log a config
 # Configuration info: Log hyperparameters, a link to your dataset, or the name of the architecture you're using as config parameters, passed in like this: wandb.init(config=your_config_dictionary).
 run = wandb.init(
-    project=args.wandb_project, job_type=args.wandb_job_type, tags=["training"]
+    project=args.wandb_project,
+    job_type=args.wandb_job_type,
+    tags=["training"],
+    notes=args.wandb_run_notes,
 )
+
+# Weights & Biases setup to load artifacts
 
 # Add args config to Weights & Biases
 wandb.config.update(args)
 
-dataset_at = run.use_artifact(args.wandb_dataset_artifact, type="dataset")
-images_dir = (
-    dataset_at.download()
-)  # TODO: change this artifact to just be a standard GCP bucket of all images (rather than food_vision_199_classes_images:latest) -> all images in a single bucket (not 199_classes, just all images), then index with labels
+from utils.wandb_utils import wandb_load_artifact, wandb_download_and_load_labels
+
+run = wandb.init(project=args.wandb_project, 
+                 job_type=args.wandb_job_type,
+                 tags=args.wandb_run_tags,
+                 notes=args.wandb_run_notes)
+
+images_dir = wandb_load_artifact(
+    wandb_run=run, 
+    artifact_name=args.wandb_dataset_artifact, 
+    artifact_type="dataset")
 
 print(f"[INFO] Images directory: {images_dir}")
 
-### Get labels ###
-import pandas as pd
-
-# TODO: could add annotations to a function in a separate file
-# Load in the annotations
-labels_at = run.use_artifact(args.wandb_labels_artifact, type="labels")
-labels_dir = labels_at.download()
-labels_path = Path(labels_dir) / "annotations.csv"
-print(f"[INFO] Labels path: {labels_path}")
-annotations = pd.read_csv(labels_path)
-
-# Create a dictionary of class_names and labels
-class_names = annotations["class_name"].to_list()
-class_labels = annotations["label"].to_list()
-class_dict = dict(sorted(dict(zip(class_labels, class_names)).items()))
-print(f"[INFO] Working with: {len(class_dict)} classes")
-# Save class_dict to JSON with each class on a new line
-with open("class_dict.json", "w") as f:
-    class_dict_json = json.dumps(class_dict, indent=4)
-    f.write(class_dict_json)
-
-### Create dataset ###
-# TODO: turn this into it's own script for loading the data
-# Make a custom dataset reader for Timm to read images from a directory
-from timm.data import ImageDataset
-from timm.data.readers.reader import (
-    Reader,
-)
+annotations, class_names, class_dict, reverse_class_dict, labels_path = wandb_download_and_load_labels(wandb_run=run,
+wandb_labels_artifact_name=args.wandb_labels_artifact)
 
 
-class FoodVisionReader(Reader):
-    def __init__(
-        self,
-        image_root,
-        label_root,
-        class_to_idx,
-        split="train",
-        quick_experiment=args.quick_experiment,
-    ):
-        super().__init__()
-        self.image_root = Path(image_root)
-
-        # Get a mapping of classes to indexes
-        self.class_to_idx = class_to_idx
-
-        # Get a list of the samples to be used
-        # TODO: could create the class_to_idx here? after loading the labels?
-        # TODO: this would save opening the labels with pandas more than once...
-        self.label_root = pd.read_csv(label_root)
-
-        # Filter samples into "train" and "test"
-        # TODO: add an index so I can select X amount of samples to use (e.g. for quick exerpimentation)
-        # TODO: e.g. if args.quick_experiment == True: self.samples = self.samples[:100]
-        if split == "train":
-            self.samples = self.label_root[self.label_root["split"] == "train"][
-                "image_name"
-            ].to_list()
-        elif split == "test":
-            self.samples = self.label_root[self.label_root["split"] == "test"][
-                "image_name"
-            ].to_list()
-
-        # Perform a quick training experiment on a small subset of the data
-        if quick_experiment:
-            self.samples = self.samples[:100]
-
-    def __get_label(self, sample_name):
-        return self.label_root.loc[self.label_root["image_name"] == sample_name][
-            "label"
-        ].values[0]
-
-    def __getitem__(self, index):
-        sample_name = self.samples[index]
-        path = self.image_root / sample_name
-        target = self.__get_label(sample_name)
-        return open(path, "rb"), target
-
-    def __len__(self):
-        return len(self.samples)
-
-    def _filename(self, index, basename=False, absolute=False):
-        filename = Path(self.samples[index])
-        if basename:
-            filename = filename.parts[-1]
-        elif not absolute:
-            filename = self.image_root / filename
-        return filename
-
-
-# TODO: make the following arguments better in terms of how they're used
-food_vision_reader = FoodVisionReader(
-    image_root=images_dir,
-    label_root=labels_path,
-    class_to_idx=class_dict,
-    split="train",
-)
-
-# Create tranforms
-from timm.data import create_transform
+# TODO create train transform
+if args.auto_augment:
+    train_transform = create_transform(input_size=args.image_size, is_training=True, auto_augment="rand-m9-mstd0.5")
+else:
+    train_transform = create_transform(input_size=args.image_size, is_training=True)
 
 # Create datasets
 # TODO: maybe a good idea to print out how many samples are in each dataset?
+polars_or_pandas = args.polars_or_pandas
+if polars_or_pandas == "polars":
+    from foodvision.data_loader import FoodVisionReaderPolars
+    print("[INFO] Using Polars for DataFrame Loading")
+    FoodVisionReader = FoodVisionReaderPolars
+else:
+    print("[INFO] Using Pandas for DataFrame Loading")
+
 train_dataset = ImageDataset(
     root=str(images_dir),
-    reader=FoodVisionReader(
-        images_dir, labels_path, class_to_idx=class_dict, split="train"
+    parser=FoodVisionReader(
+        images_dir, labels_path, class_to_idx=class_dict, split="train",
+        quick_experiment=args.quick_experiment
     ),
-    transform=create_transform(input_size=args.image_size, is_training=True),
+    transform=train_transform,
 )
 
 test_dataset = ImageDataset(
     root=str(images_dir),
-    reader=FoodVisionReader(
-        images_dir, labels_path, class_to_idx=class_dict, split="test"
+    parser=FoodVisionReader(
+        images_dir, labels_path, class_to_idx=class_dict, split="test",
+        quick_experiment=args.quick_experiment
     ),
     transform=create_transform(input_size=args.image_size, is_training=False),
 )
@@ -346,23 +326,35 @@ from torch.utils.data import DataLoader
 
 BATCH_SIZE = args.batch_size
 NUM_WORKERS = args.workers
+PIN_MEMORY = args.pin_memory
+
+print(f"[INFO] Using batch size: {BATCH_SIZE}")
+print(f"[INFO] Using num workers: {NUM_WORKERS}")
+print(f"[INFO] Using pin memory: {PIN_MEMORY}")
 
 # TODO: make a sampler that samples X random samples from the dataset rather than the whole thing (for faster experimentation)
 train_dataloader = DataLoader(
-    train_dataset, batch_size=BATCH_SIZE, shuffle=True, num_workers=NUM_WORKERS
+    train_dataset, batch_size=BATCH_SIZE, shuffle=True, num_workers=NUM_WORKERS,
+    pin_memory=PIN_MEMORY
 )
 
 test_dataloader = DataLoader(
-    test_dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=NUM_WORKERS
+    test_dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=NUM_WORKERS,
+    pin_memory=PIN_MEMORY
 )
 
 ### Create model ###
 # TODO: fix the number of classes? (should come from args/annotations)
 # TODO: add the modal name to a config/argparse?
 # TODO: setup model config in W&B - https://docs.wandb.ai/guides/track/config
-def create_model(model_name=args.model, num_classes=len(class_dict)):
+def create_model(model_name=args.model, 
+                 pretrained=args.pretrained,
+                 num_classes=len(class_dict)):
+
     model = timm.create_model(
-        model_name=model_name, pretrained=True, num_classes=num_classes
+        model_name=model_name, 
+        pretrained=pretrained, 
+        num_classes=num_classes
     )
 
     # Set all parameters to not requiring gradients
@@ -381,18 +373,17 @@ model.to(device)
 
 # TODO: fix this setup and have optimizers in the config/argparse
 from torch import nn
+from tqdm.auto import tqdm
 
 # TODO: setup mixed precision in train_step()
 # TODO: fix engine script to work right within this script
-from foodvision.engine import train, train_step, test_step
-from tqdm.auto import tqdm
+from engine import test_step, train, train_step
 
 loss_fn = nn.CrossEntropyLoss(label_smoothing=args.label_smoothing)
 optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
 
 # TODO: make a "validate every... epoch" for example could validate every 5 epochs or something
 
-from foodvision import utils
 
 # TODO: make this function usable (or similar to timm's train.py)
 def train_one_epoch(
@@ -405,10 +396,6 @@ def train_one_epoch(
     amp_autocast=suppress,
     loss_scaler=None,
 ):
-
-    losses_meter = utils.AverageMeter()
-    top1_meter = utils.AverageMeter()
-    top5_meter = utils.AverageMeter()
 
     # Setup train loss and train accuracy values
     train_loss, train_acc = 0, 0
@@ -473,15 +460,13 @@ def train(
     loss_fn: torch.nn.Module,
     epochs: int,
     device: torch.device,
+    amp_autocast: torch.cuda.amp.autocast = suppress,
 ) -> Dict[str, List]:
     """Trains and tests a PyTorch model.
-
     Passes a target PyTorch models through train_step() and test_step()
     functions for a number of epochs, training and testing the model
     in the same epoch loop.
-
     Calculates, prints and stores evaluation metrics throughout.
-
     Args:
       model: A PyTorch model to be trained and tested.
       train_dataloader: A DataLoader instance for the model to be trained on.
@@ -490,7 +475,6 @@ def train(
       loss_fn: A PyTorch loss function to calculate loss on both datasets.
       epochs: An integer indicating how many epochs to train for.
       device: A target device to compute on (e.g. "cuda" or "cpu").
-
     Returns:
       A dictionary of training and testing loss as well as training and
       testing accuracy metrics. Each metric has a value in a list for
@@ -559,6 +543,7 @@ def train(
 
 
 # TODO: update this by potentially using the train_one_epoch function (create this first)
+print("[INFO] Training model...")
 vanilla_pytorch_results = train(
     model=model,
     train_dataloader=train_dataloader,
@@ -567,43 +552,18 @@ vanilla_pytorch_results = train(
     optimizer=optimizer,
     epochs=args.epochs,
     device=device,
+    amp_autocast=amp_autocast,
 )
 
 # Create a function to save to Google Storage
 # TODO: make an export function to save the model to different store types
-# TODO: put this file into a utils dir
+# TODO: put this file into a utils dir (see utls/gcp_utils.py)
 from google.cloud import storage
 
-
-def upload_to_gs(bucket_name, source_file_name, destination_blob_name):
-    """Uploads a file to the bucket."""
-    # # The ID of your GCS bucket
-    # bucket_name = GS_BUCKET
-    # The path to your file to upload
-    # source_file_name = "local/path/to/file"
-    # The ID of your GCS object
-    # destination_blob_name = "storage-object-name"
-    print(f"[INFO] Google Cloud Bucket name: {bucket_name}")
-    print(f"[INFO] Uploading {source_file_name} to {destination_blob_name}...")
-    storage_client = storage.Client()
-    bucket = storage_client.bucket(bucket_name)
-    print(f"[INFO] Connected to bucket: {bucket_name}")
-    blob = bucket.blob(destination_blob_name)
-
-    blob.upload_from_filename(source_file_name)
-
-    print(f"[INFO] File {source_file_name} uploaded to {destination_blob_name}.")
-    print(f"[INFO] File size: {blob.size} bytes")
-
-    # TODO: Make the blob public -- do I want this to happen?
-    # blob.make_public()
-    # print(f"[INFO] Blob public URL: {blob.public_url}")
-
-    # print(f"[INFO] Blob download URL: {blob._get_download_url()}")
-
-    return destination_blob_name
+from utils.gcp_utils import upload_to_gs
 
 
+# TODO: move this into a model utils?
 def save_model(model: torch.nn.Module, target_dir: str, model_name: str):
     """Saves a PyTorch model to a target directory.
     Args:
@@ -638,12 +598,11 @@ def save_model(model: torch.nn.Module, target_dir: str, model_name: str):
 model_export_dir = Path(args.model_out_dir)
 # TODO: Save the model with some kind of time/name stamp
 # Get the current time
-import datetime
-
-current_time = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+from utils import get_now_time
 
 # Save the model
 # TODO: save this to GCP/Weights & Biases as an Artifact
+current_time = get_now_time()
 model_export_name = f"{current_time}_model_{args.model}.pth"
 model_save_path = save_model(
     model=model, target_dir=model_export_dir, model_name=model_export_name
@@ -653,13 +612,14 @@ model_save_path = save_model(
 # TODO: Results could be gathered from Weights & Biases on which model is the best...
 # if args.upload_to_gs:
 model_gcs_path = upload_to_gs(
-    bucket_name=GS_BUCKET,
+    bucket_name=args.gs_bucket_name,
     source_file_name=model_save_path,
     destination_blob_name=str(model_save_path),
 )
 
 # TODO: Add the reference model log file from GCP to W&B Artifacts
 # TODO: Could add this W&B model registry as well?
+# TODO: move this wandb utils 
 def log_model_artifact_to_wandb(model_path, project=args.wandb_project, run=run):
     """Logs a model to Weights & Biases as an artifact."""
     print(f"[INFO] Logging model to Weights & Biases...")
@@ -682,6 +642,12 @@ def log_model_artifact_to_wandb(model_path, project=args.wandb_project, run=run)
     # Log the artifact to W&B
     # run = wandb.init(project=project)
     run.log_artifact(model_artifact)
+
+# Get model_save_path file size in MB
+model_save_path_size_in_mb = model_save_path.stat().st_size / 1e6
+
+# Log the model_save_path_size_in_mb to W&B
+run.log({"model_save_path_size_in_mb": model_save_path_size_in_mb})
 
 
 # TODO: make this cleaner (e.g. the "run" parameter could be clearer, right now it's only set from the top)
