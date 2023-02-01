@@ -54,6 +54,7 @@ def wandb_add_artifact_with_reference(wandb_run, artifact_name, artifact_type, d
     print(f"[INFO] Logging '{artifact_name}' from '{reference_path}' to Weights & Biases...")
     artifact = wandb.Artifact(name=artifact_name, 
                               type=artifact_type,
-                                description=description)
-    artifact.add_reference(reference_path)
+                              description=description,
+                              )
+    artifact.add_reference(reference_path, max_objects=1e9) # default capability to track up to 1 billion images
     wandb_run.log_artifact(artifact)
