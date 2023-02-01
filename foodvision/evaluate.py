@@ -197,7 +197,7 @@ seed_everything(args.seed)
 run = wandb.init(
     project=args.wandb_project,
     job_type=args.wandb_job_type,
-    tags=args.wandb_run_tags,
+    tags=["predict_and_evaluate"],
     notes=args.wandb_run_notes,
 )
 
