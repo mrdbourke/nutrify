@@ -25,3 +25,19 @@ def seed_everything(seed: int):
     np.random.seed(seed)
     torch.manual_seed(seed)
     torch.cuda.manual_seed(seed)
+
+def check_for_differences_between_df(df1, df2, columns_to_exclude: list=None):
+    """Checks for differences between two dataframes, returns the number of differences"""
+    # Find the intersection of the columns
+    intersecting_columns = list(df1.columns.intersection(df2.columns))
+
+    # Remove columns_to_exclude from intersecting_columns
+    if columns_to_exclude is not None:
+        intersecting_columns = [column for column in intersecting_columns if column not in columns_to_exclude]
+    
+    # Compare the values in the intersecting columns
+    # See here: https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.compare.html 
+    differences = df1[intersecting_columns].compare(df2[intersecting_columns])
+
+    # Return the number of differences
+    return len(differences)
