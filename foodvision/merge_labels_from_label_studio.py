@@ -224,7 +224,7 @@ UPDATED_ANNOTATIONS_TARGET_FILENAME = "updated_annotations.csv"
 ORIGINAL_ANNOTATIONS_TARGET_FILENAME = "annotations.csv"
 
 # Export the updated annotations to a CSV
-columns_to_export = config.columns_to_export
+columns_to_export = config.annotations_columns_to_export
 print(f"[INFO] Exporting the following columns to {UPDATED_ANNOTATIONS_TARGET_FILENAME}: {columns_to_export}")
 
 # TODO: Check if the updated_annotations_reset_index and the original_annotations actually differ, if so save them and upload them, else exit
