@@ -201,9 +201,6 @@ run = wandb.init(
     notes=args.wandb_run_notes,
 )
 
-# Add args config to Weights & Biases
-wandb.config.update(args)
-
 # Download dataset artifact
 from utils.wandb_utils import wandb_load_artifact
 images_dir = wandb_load_artifact(
@@ -216,6 +213,12 @@ from utils.wandb_utils import wandb_download_and_load_labels
 
 annotations, class_names, class_dict, reverse_class_dict, labels_path = wandb_download_and_load_labels(wandb_run=run, 
                                                                                                             wandb_labels_artifact_name=args.wandb_labels_artifact)
+
+# Add args config to Weights & Biases
+wandb.config.update(args)
+wandb.config.update({"num_classes": len(class_names)})
+wandb.config.update({"class_names": class_names})
+
 
 # Download model artifact
 model_at_dir = wandb_load_artifact(wandb_run=run,
