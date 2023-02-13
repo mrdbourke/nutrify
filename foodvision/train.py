@@ -284,6 +284,10 @@ print(f"[INFO] Images directory: {images_dir}")
 annotations, class_names, class_dict, reverse_class_dict, labels_path = wandb_download_and_load_labels(wandb_run=run,
 wandb_labels_artifact_name=args.wandb_labels_artifact)
 
+wandb.config.update({"num_classes": len(class_names)})
+wandb.config.update({"class_names": class_names})
+wandb.config.update({"class_dict": class_dict})
+
 # Create datasets
 # TODO: maybe a good idea to print out how many samples are in each dataset?
 polars_or_pandas = args.polars_or_pandas
