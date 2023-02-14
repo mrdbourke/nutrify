@@ -126,6 +126,13 @@ group.add_argument(
     default=True,
     help="whether to use torch native mixed precision training (default: True)",
 )
+group.add_argument(
+    "--fine_tune_after_first_epoch",
+    "-ft",
+    type=bool,
+    default=False,
+    help="whether to fine tune model after first epoch, this will unfreeze all parameters in the model, e.g. set them all to require_grad=True (default: False)",
+)
 
 
 # Create Weights and Biases parameters
@@ -455,6 +462,7 @@ def train(
     epochs: int,
     device: torch.device,
     amp_autocast: torch.cuda.amp.autocast = suppress,
+    fine_tune: bool = False,
 ) -> Dict[str, List]:
     """Trains and tests a PyTorch model.
     Passes a target PyTorch models through train_step() and test_step()
@@ -498,6 +506,7 @@ def train(
             device=device,
             amp_autocast=amp_autocast,
             loss_scaler=loss_scaler,
+            fine_tune=fine_tune,
         )
         test_loss, test_acc = test_step(
             epoch=epoch,
@@ -547,6 +556,7 @@ vanilla_pytorch_results = train(
     epochs=args.epochs,
     device=device,
     amp_autocast=amp_autocast,
+    fine_tune=args.fine_tune_after_first_epoch,
 )
 
 # Create a function to save to Google Storage
