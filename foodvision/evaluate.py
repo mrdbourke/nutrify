@@ -282,37 +282,42 @@ def pred_on_image(
     # Turn on model eval mode and make prediction
     model.eval()
     with torch.inference_mode():
-        img_tensor = transform(img).unsqueeze(0).to(device)
-        pred = model(img_tensor)
-        pred_prob = torch.softmax(pred, dim=1)
-        pred_label = pred_prob.argmax().item()
-        pred_class = class_dict[pred_label]
+        try:
+            img_tensor = transform(img).unsqueeze(0).to(device)
+            pred = model(img_tensor)
+            pred_prob = torch.softmax(pred, dim=1)
+            pred_label = pred_prob.argmax().item()
+            pred_class = class_dict[pred_label]
 
-    # Get top_n predictions
-    top_n_pred_tensor = pred_prob.topk(num_top_n_preds)
-    top_n_pred_probs = top_n_pred_tensor.values.tolist()[0]
-    top_n_pred_labels = top_n_pred_tensor.indices.tolist()[0]
-    top_n_pred_classes = [class_dict[i] for i in top_n_pred_labels]
+            # Get top_n predictions
+            top_n_pred_tensor = pred_prob.topk(num_top_n_preds)
+            top_n_pred_probs = top_n_pred_tensor.values.tolist()[0]
+            top_n_pred_labels = top_n_pred_tensor.indices.tolist()[0]
+            top_n_pred_classes = [class_dict[i] for i in top_n_pred_labels]
 
-    # Zip together top_n_pred_labels and top_n_pred_classes
-    top_n_pred_dict = [
-        {"pred_prob": pred_prob, "pred_label": pred_label, "pred_class": pred_class}
-        for pred_prob, pred_label, pred_class in zip(
-            top_n_pred_probs, top_n_pred_labels, top_n_pred_classes
-        )
-    ]
+            # Zip together top_n_pred_labels and top_n_pred_classes
+            top_n_pred_dict = [
+                {"pred_prob": pred_prob, "pred_label": pred_label, "pred_class": pred_class}
+                for pred_prob, pred_label, pred_class in zip(
+                    top_n_pred_probs, top_n_pred_labels, top_n_pred_classes
+                )
+            ]
 
-    # Create pred dict
-    pred_dict = {
-        "image_path": image_path,
-        "pred_label": pred_label,
-        "pred_prob": pred_prob.max().item(),
-        "pred_class": pred_class,
-        "top_n_preds": top_n_pred_dict,
-    }
+            # Create pred dict
+            pred_dict = {
+                "image_path": image_path,
+                "pred_label": pred_label,
+                "pred_prob": pred_prob.max().item(),
+                "pred_class": pred_class,
+                "top_n_preds": top_n_pred_dict,
+            }
 
-    return pred_dict
+            return pred_dict
 
+        except Exception as e:
+            print(f"[ERROR] Error making prediction on image: {image_path}, continuing...")
+            print(e)
+            return None
 
 # TODO: Log the predictions to Weights & Biases/Google Storage
 # TODO: check the Artifacts and see if they can just be stored as reference rather than
@@ -490,12 +495,17 @@ for pred_split_to_predict_on in pred_splits_to_predict_on:
             device=device,
             num_top_n_preds=num_top_n_preds,
         )
-        pred_dict["image_name"] = image_name
-        pred_dict["true_label"] = label
-        pred_dict["true_class"] = class_dict[label]
-        pred_dict["split"] = pred_split_to_predict_on
-        # Append invididual prediction dictionary to pred_list
-        pred_list.append(pred_dict)
+        if pred_dict != None:
+            pred_dict["image_name"] = image_name
+            pred_dict["true_label"] = label
+            pred_dict["true_class"] = class_dict[label]
+            pred_dict["split"] = pred_split_to_predict_on
+
+            # Append invididual prediction dictionary to pred_list
+            pred_list.append(pred_dict)
+        else:
+            print(f"[INFO] pred_dict returned as None for image: {image_name}, skipping...")
+            continue
 
     # Add pred_list to pred_dicts (for later inspection)
     pred_holder = {pred_split_to_predict_on: pred_list}
