@@ -18,6 +18,7 @@ def train_step(
     device: torch.device,
     amp_autocast=suppress,
     loss_scaler=None,
+    fine_tune=False,
 ) -> Tuple[float, float]:
     """Trains a PyTorch model for a single epoch.
     Turns a target PyTorch model to training mode and then
@@ -44,6 +45,16 @@ def train_step(
     progress_bar = tqdm(
         enumerate(dataloader), desc=f"Training Epoch {epoch}", total=len(dataloader)
     )
+
+    # Set all parameters in model to require gradients if epoch > 1
+    if fine_tune and epoch > 1:
+        print(f"[INFO] Fine tuning model on epoch {epoch}, total trainable params: {sum(p.numel() for p in model.parameters() if p.requires_grad)}")
+        for param in model.parameters():
+            param.requires_grad = True
+    else:
+        print(f"[INFO] Training model on epoch {epoch}, total trainable params: {sum(p.numel() for p in model.parameters() if p.requires_grad)}")
+
+
     for batch, (inputs, targets) in progress_bar:
         # for batch, (inputs, targets) in tqdm(
         #     enumerate(dataloader), desc="Training", total=len(dataloader)
