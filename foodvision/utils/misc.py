@@ -1,7 +1,16 @@
+import datetime
+import os
+import random
+
+import numpy as np
+import torch
+from PIL import Image
+
+
 def get_now_time():
     """Get the current time in YYYY-MM-DD_HH-MM-SS format.
     """
-    import datetime
+    
     now = datetime.datetime.now()
 
     # Get the current time in YYYY-MM-DD_HH-MM-SS format
@@ -16,10 +25,6 @@ def seed_everything(seed: int):
     Args:
         seed (int): manually set seed for reproducibility
     """
-    import random, os
-    import numpy as np
-    import torch
-    
     random.seed(seed)
     os.environ['PYTHONHASHSEED'] = str(seed)
     np.random.seed(seed)
@@ -41,3 +46,13 @@ def check_for_differences_between_df(df1, df2, columns_to_exclude: list=None):
 
     # Return the number of differences
     return len(differences)
+
+def sort_dict_by_values(dict_to_sort):
+    sorted_dict = dict(sorted(dict_to_sort.items(), key=lambda x:x[1], reverse=True))
+    return sorted_dict
+
+def open_image(image_path_or_PIL):
+    try:
+        return Image.open(image_path_or_PIL).convert("RGB")
+    except:
+        return image_path_or_PIL.convert("RGB")
