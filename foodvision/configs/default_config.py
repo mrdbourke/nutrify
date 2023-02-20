@@ -48,6 +48,9 @@ config.label_smoothing = 0.1
 config.learning_rate = 0.001
 config.use_mixed_precision = True
 
+# Evaluating
+config.num_top_n_preds = 5
+
 # Misc
 config.seed = 42
 
