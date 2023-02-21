@@ -1,10 +1,13 @@
 import datetime
 import os
 import random
+from pathlib import Path, PosixPath
 
 import numpy as np
 import torch
 from PIL import Image
+
+
 
 
 def get_now_time():
@@ -52,7 +55,7 @@ def sort_dict_by_values(dict_to_sort):
     return sorted_dict
 
 def open_image(image_path_or_PIL):
-    try:
+    if isinstance(image_path_or_PIL, str) or isinstance(image_path_or_PIL, os.PathLike) or isinstance(image_path_or_PIL, PosixPath):
         return Image.open(image_path_or_PIL).convert("RGB")
-    except:
+    else:
         return image_path_or_PIL.convert("RGB")
