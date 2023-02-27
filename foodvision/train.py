@@ -294,6 +294,8 @@ wandb_labels_artifact_name=args.wandb_labels_artifact)
 wandb.config.update({"num_classes": len(class_names)})
 wandb.config.update({"class_names": class_names})
 wandb.config.update({"class_dict": class_dict})
+wandb.config.update({"num_images_with_annotations": len(annotations)})
+print(f"[INFO] Number of images with labels: {len(annotations)}")
 
 # Create datasets
 # TODO: maybe a good idea to print out how many samples are in each dataset?
