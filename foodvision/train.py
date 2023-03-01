@@ -17,6 +17,8 @@ from pathlib import Path
 from typing import Dict, List
 import yaml
 
+import numpy as np
+
 import torch
 from torch import nn
 from torch.utils.data import DataLoader
@@ -132,6 +134,13 @@ group.add_argument(
     type=bool,
     default=False,
     help="whether to fine tune model after first epoch, this will unfreeze all parameters in the model, e.g. set them all to require_grad=True (default: False)",
+)
+group.add_argument(
+    "--use_class_weights",
+    "-cw",
+    type=bool,
+    default=False,
+    help="whether to use class weights in loss function (default: False)"
 )
 
 
@@ -291,6 +300,16 @@ print(f"[INFO] Images directory: {images_dir}")
 annotations, class_names, class_dict, reverse_class_dict, labels_path = wandb_download_and_load_labels(wandb_run=run,
 wandb_labels_artifact_name=args.wandb_labels_artifact)
 
+# Setup class weights (for loss function)
+if args.use_class_weights:
+    print("[INFO] Using class weights (for adjusting loss function)")
+    class_counts = np.bincount(annotations.label)
+    class_weights = {i: 1. / count for i, count in enumerate(class_counts)}
+    class_weights_tensor = torch.Tensor(list(class_weights.values())).to(device)
+else:
+    print("[INFO] Not using class weights (for adjusting loss function)")
+    class_weights_tensor = None
+
 wandb.config.update({"num_classes": len(class_names)})
 wandb.config.update({"class_names": class_names})
 wandb.config.update({"class_dict": class_dict})
@@ -383,7 +402,8 @@ from tqdm.auto import tqdm
 # TODO: fix engine script to work right within this script
 from engine import test_step, train, train_step
 
-loss_fn = nn.CrossEntropyLoss(label_smoothing=args.label_smoothing)
+loss_fn = nn.CrossEntropyLoss(weight=class_weights_tensor if args.use_class_weights else None, 
+                              label_smoothing=args.label_smoothing)
 optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
 
 # TODO: make a "validate every... epoch" for example could validate every 5 epochs or something
