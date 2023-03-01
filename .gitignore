@@ -141,6 +141,7 @@ cython_debug/
 # Keys
 *label_studio_api_key.json
 google-storage-key.json
+*openai_api_key.*
 
 # Extras
 models/*.pth
