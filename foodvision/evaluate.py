@@ -207,6 +207,7 @@ images_dir = wandb_load_artifact(
     wandb_run=run,
     artifact_name=args.wandb_dataset_artifact,
     artifact_type="dataset")
+print(f"[INFO] Dataset artifact loaded from: {images_dir}")
 
 # Download labels artifact
 from utils.wandb_utils import wandb_download_and_load_labels
@@ -218,6 +219,7 @@ annotations, class_names, class_dict, reverse_class_dict, labels_path = wandb_do
 wandb.config.update(args)
 wandb.config.update({"num_classes": len(class_names)})
 wandb.config.update({"class_names": class_names})
+wandb.config.update({"num_images_with_annotations": len(annotations)})
 
 
 # Download model artifact
