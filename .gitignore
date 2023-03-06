@@ -157,3 +157,10 @@ wandb/*
 foodvision/models/*
 foodvision/predictions/*
 *_annotations.csv
+foodvision/notebooks/*food_photos/*
+foodvision/notebooks/*food_photos*
+foodvision/notebooks/all_*/*
+foodvision/notebooks/all_*
+foodvision/notebooks/celery*
+foodvision/notebooks/duplicates*
+foodvision/notebooks/*_clip_retrieval_100_images_per_class*
