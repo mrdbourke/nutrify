@@ -39,16 +39,26 @@ def check_for_differences_between_df(df1, df2, columns_to_exclude: list=None):
     # Find the intersection of the columns
     intersecting_columns = list(df1.columns.intersection(df2.columns))
 
-    # Remove columns_to_exclude from intersecting_columns
-    if columns_to_exclude is not None:
-        intersecting_columns = [column for column in intersecting_columns if column not in columns_to_exclude]
-    
-    # Compare the values in the intersecting columns
-    # See here: https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.compare.html 
-    differences = df1[intersecting_columns].compare(df2[intersecting_columns])
+    print(f"Number of intersecting columns: {len(intersecting_columns)}")
+    print(f"Checking for differences accross the following columns: {intersecting_columns}")
 
-    # Return the number of differences
-    return len(differences)
+    try:
+        # Remove columns_to_exclude from intersecting_columns
+        if columns_to_exclude is not None:
+            intersecting_columns = [column for column in intersecting_columns if column not in columns_to_exclude]
+        
+        # Compare the values in the intersecting columns
+        # See here: https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.compare.html 
+        differences = df1[intersecting_columns].compare(df2[intersecting_columns])
+        return len(differences)
+    except Exception as e:
+        print(f"Error: {e}")
+        print("Couldn't compare via pandas.DataFrame.compare, trying via lengths...")
+        # Compare the lengths of the dataframes
+        if len(df1) != len(df2):
+            differences = abs(len(df1) - len(df2))
+            print(f"Difference in dataframe lengths: {differences} (aboslute value of {len(df1)} - {len(df2)})")
+            return differences
 
 def sort_dict_by_values(dict_to_sort):
     sorted_dict = dict(sorted(dict_to_sort.items(), key=lambda x:x[1], reverse=True))
