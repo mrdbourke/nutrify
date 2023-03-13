@@ -101,6 +101,7 @@ def download_blobs_to_file(blobs, destination_dir):
     # Print the number of blobs downloaded
     print(f"[INFO] Number of blobs downloaded: {num_downloaded}")
     print(f"[INFO] Total files in {destination_dir}: {len(os.listdir(destination_dir))}")
+    
 
 def upload_to_gs(bucket_name, source_file_name, destination_blob_name):
     """Uploads a file to the bucket."""
