@@ -20,6 +20,12 @@ from tqdm.auto import tqdm
 from PIL import Image
 from google.cloud import storage
 
+# Increase upload blob size
+# See: https://stackoverflow.com/a/75500116/7900723 
+# And here: https://github.com/GoogleCloudPlatform/python-docs-samples/issues/2488
+storage.blob._DEFAULT_CHUNKSIZE = 5 * 1024 * 1024
+storage.blob._MAX_MULTIPART_SIZE = 5 * 1024 * 1024
+
 from sklearn.metrics import accuracy_score, classification_report
 
 # Create config parser (to get baseline config parameters)
