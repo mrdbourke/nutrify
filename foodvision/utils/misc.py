@@ -54,9 +54,16 @@ def check_for_differences_between_df(df1, df2, columns_to_exclude: list=None):
     except Exception as e:
         print(f"Error: {e}")
         print("Couldn't compare via pandas.DataFrame.compare, trying via lengths...")
+        
         # Compare the lengths of the dataframes
         if len(df1) != len(df2):
             differences = abs(len(df1) - len(df2))
+            try:
+                assert differences != len(df1) and differences != len(df2), "Something went wrong, the difference in dataframe lengths is the same as one of the dataframe lengths, potentially there were no new updates?"
+            except AssertionError as e:
+                print(e)
+                print(f"Returning 0 differences between df lengths: (df1: {len(df1)}, df2: {len(df2)})")
+                return 0
             print(f"Difference in dataframe lengths: {differences} (aboslute value of {len(df1)} - {len(df2)})")
             return differences
 
