@@ -164,3 +164,6 @@ foodvision/notebooks/all_*
 foodvision/notebooks/celery*
 foodvision/notebooks/duplicates*
 foodvision/notebooks/*_clip_retrieval_100_images_per_class*
+
+# Keys
+*key*
