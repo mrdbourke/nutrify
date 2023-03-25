@@ -6,6 +6,7 @@ import argparse
 import os
 import random
 import torch
+from torch import nn
 import timm
 import wandb
 import yaml
@@ -242,6 +243,19 @@ print(f"[INFO] Model path: {model_path}")
 model = timm.create_model(
     model_name=args.model, pretrained=args.pretrained, num_classes=len(class_dict)
 )
+
+# Try an extra layer on top 
+num_classes = len(class_dict)
+in_features = model.head.fc.in_features
+model.head.fc = nn.Sequential(
+    nn.Linear(in_features=in_features, 
+                out_features=in_features),
+    nn.ReLU(),
+    nn.Dropout(p=0.2),
+    nn.Linear(in_features=in_features,
+                out_features=num_classes)
+)
+
 model.load_state_dict(torch.load(model_path))
 
 # Create the data transform
