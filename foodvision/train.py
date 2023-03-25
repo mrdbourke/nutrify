@@ -384,12 +384,22 @@ def create_model(model_name=args.model,
     for param in model.parameters():
         param.requires_grad = False
 
+    # Try an extra layer on top 
+    in_features = model.head.fc.in_features
+    model.head.fc = nn.Sequential(
+        nn.Linear(in_features=in_features, 
+                  out_features=in_features),
+        nn.ReLU(),
+        nn.Dropout(p=0.2),
+        nn.Linear(in_features=in_features,
+                  out_features=num_classes)
+    )
+
     # Set the last layer to require gradients (fine-tune the last layer only)
     for param in model.head.fc.parameters():
         param.requires_grad = True
 
     return model
-
 
 model = create_model()
 model.to(device)
