@@ -39,6 +39,8 @@ config.auto_augment = True
 
 # Model
 config.model = "coatnext_nano_rw_224"
+config.food_not_food_model = "efficientnet_b0"
+config.food_not_food_model_out_dir = "food_not_food_models"
 config.pretrained = True
 
 # Training
