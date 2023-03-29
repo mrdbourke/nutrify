@@ -293,13 +293,13 @@ run = wandb.init(project=args.wandb_project,
 
 images_dir = wandb_load_artifact(
     wandb_run=run, 
-    artifact_name=args.wandb_dataset_artifact, 
+    artifact_name="food_not_food_images:latest", 
     artifact_type="dataset")
 
 print(f"[INFO] Images directory: {images_dir}")
 
 annotations, class_names, class_dict, reverse_class_dict, labels_path = wandb_download_and_load_labels(wandb_run=run,
-                                                                                                       wandb_labels_artifact_name=args.wandb_labels_artifact)
+                                                                                                       wandb_labels_artifact_name="food_not_food_annotations:latest")
 
 # Setup class weights (for loss function)
 if args.use_class_weights:
