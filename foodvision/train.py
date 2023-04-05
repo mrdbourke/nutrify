@@ -142,6 +142,13 @@ group.add_argument(
     default=False,
     help="whether to use class weights in loss function (default: False)"
 )
+group.add_argument(
+    "--train_body",
+    "-tb",
+    type=bool,
+    default=False,
+    help="whether to train the body of the model (default: False)"
+)
 
 
 # Create Weights and Biases parameters
@@ -257,17 +264,9 @@ else:
         "[INFO] Not using mixed precision training. Training with dtype: torch.float32"
     )
 
-if args.auto_augment:
-    print(f"[INFO] Using auto augment, strategy: {args.auto_augment}")
-    train_transform = create_transform(input_size=args.image_size, is_training=True, auto_augment="rand-m9-mstd0.5")
-else:
-    print("[INFO] Not using auto augment, normal image transformations will be used.")
-    train_transform = create_transform(input_size=args.image_size, is_training=True)
-
 # Set seeds
 from utils import seed_everything
 seed_everything(args.seed)
-
 
 ### Setup Artifacts ###
 # TODO: should I load the Artifacts from another file? e.g. load_artifacts.py?
@@ -316,11 +315,42 @@ wandb.config.update({"class_dict": class_dict})
 wandb.config.update({"num_images_with_annotations": len(annotations)})
 print(f"[INFO] Number of images with labels: {len(annotations)}")
 
-# Create datasets
+### Create model ###
+# TODO: fix the number of classes? (should come from args/annotations)
+# TODO: add the modal name to a config/argparse?
+# TODO: setup model config in W&B - https://docs.wandb.ai/guides/track/config
+from models import model_dict
+
+print(f"[INFO] Using model: {args.model}")
+model_func = model_dict[args.model]
+model, image_size = model_func(num_classes=len(class_names), 
+                   pretrained=args.pretrained, 
+                   train_body=args.train_body) # TODO: if train_body is setup, lower the default learning rate 10x
+model.to(device)
+
+if args.image_size != image_size:
+    IMAGE_SIZE = image_size
+    print(f"[INFO] Image size was set to {args.image_size} but the model requires {image_size}.")
+    print(f"[INFO] Using image size: {IMAGE_SIZE}")
+else:
+    IMAGE_SIZE = args.image_size
+    print(f"[INFO] Using image size: {IMAGE_SIZE}")
+
+# Create datasets and transforms
+if args.auto_augment:
+    print(f"[INFO] Using auto augment, strategy: {args.auto_augment}")
+    train_transform = create_transform(input_size=IMAGE_SIZE, 
+                                       is_training=True, 
+                                       auto_augment="rand-m9-mstd0.5")
+else:
+    print("[INFO] Not using auto augment, normal image transformations will be used.")
+    train_transform = create_transform(input_size=IMAGE_SIZE, 
+                                       is_training=True)
+
 # TODO: maybe a good idea to print out how many samples are in each dataset?
 polars_or_pandas = args.polars_or_pandas
 if polars_or_pandas == "polars":
-    from foodvision.data_loader import FoodVisionReaderPolars
+    from data_loader import FoodVisionReaderPolars
     print("[INFO] Using Polars for DataFrame Loading")
     FoodVisionReader = FoodVisionReaderPolars
 else:
@@ -328,20 +358,29 @@ else:
 
 train_dataset = ImageDataset(
     root=str(images_dir),
-    parser=FoodVisionReader(
+    reader=FoodVisionReader(
         images_dir, labels_path, class_to_idx=class_dict, split="train",
         quick_experiment=args.quick_experiment
     ),
+    # parser=FoodVisionReader(
+    #     images_dir, labels_path, class_to_idx=class_dict, split="train",
+    #     quick_experiment=args.quick_experiment
+    # ),
     transform=train_transform,
 )
 
 test_dataset = ImageDataset(
     root=str(images_dir),
-    parser=FoodVisionReader(
+    reader=FoodVisionReader(
         images_dir, labels_path, class_to_idx=class_dict, split="test",
         quick_experiment=args.quick_experiment
     ),
-    transform=create_transform(input_size=args.image_size, is_training=False),
+    # parser=FoodVisionReader(
+    #     images_dir, labels_path, class_to_idx=class_dict, split="test",
+    #     quick_experiment=args.quick_experiment
+    # ),
+    transform=create_transform(input_size=IMAGE_SIZE, 
+                               is_training=False),
 )
 
 # Create DataLoaders
@@ -366,44 +405,6 @@ test_dataloader = DataLoader(
     pin_memory=PIN_MEMORY
 )
 
-### Create model ###
-# TODO: fix the number of classes? (should come from args/annotations)
-# TODO: add the modal name to a config/argparse?
-# TODO: setup model config in W&B - https://docs.wandb.ai/guides/track/config
-def create_model(model_name=args.model, 
-                 pretrained=args.pretrained,
-                 num_classes=len(class_dict)):
-
-    model = timm.create_model( 
-        model_name=model_name, 
-        pretrained=pretrained, 
-        num_classes=num_classes
-    )
-
-    # Set all parameters to not requiring gradients
-    for param in model.parameters():
-        param.requires_grad = False
-
-    # Try an extra layer on top 
-    in_features = model.head.fc.in_features
-    model.head.fc = nn.Sequential(
-        nn.Linear(in_features=in_features, 
-                  out_features=in_features),
-        nn.ReLU(),
-        nn.Dropout(p=0.2),
-        nn.Linear(in_features=in_features,
-                  out_features=num_classes)
-    )
-
-    # Set the last layer to require gradients (fine-tune the last layer only)
-    for param in model.head.fc.parameters():
-        param.requires_grad = True
-
-    return model
-
-model = create_model()
-model.to(device)
-
 # TODO: fix this setup and have optimizers in the config/argparse
 from torch import nn
 from tqdm.auto import tqdm
@@ -414,10 +415,17 @@ from engine import test_step, train, train_step
 
 loss_fn = nn.CrossEntropyLoss(weight=class_weights_tensor if args.use_class_weights else None, 
                               label_smoothing=args.label_smoothing)
-optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
+
+if args.train_body:
+    lr = args.learning_rate / 10
+    print(f"[INFO] Training body of model set to {args.train_body}, setting learning rate to {lr} (previous lr: {args.learning_rate})")
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+else:
+    print(f"[INFO] Model body training set to {args.train_body}, setting learning rate to {args.learning_rate}")
+    optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
+
 
 # TODO: make a "validate every... epoch" for example could validate every 5 epochs or something
-
 # TODO: make this function usable (or similar to timm's train.py)
 def train_one_epoch(
     epoch,

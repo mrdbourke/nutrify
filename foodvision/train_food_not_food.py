@@ -291,15 +291,22 @@ run = wandb.init(project=args.wandb_project,
                  tags=args.wandb_run_tags,
                  notes=args.wandb_run_notes)
 
-images_dir = wandb_load_artifact(
-    wandb_run=run, 
-    artifact_name="food_not_food_images:latest", 
-    artifact_type="dataset")
+# images_dir = wandb_load_artifact(
+#     wandb_run=run, 
+#     artifact_name="food_not_food_images:latest", 
+#     artifact_type="dataset")
+
+images_dir = "artifacts/food_not_food_images:v0"
 
 print(f"[INFO] Images directory: {images_dir}")
 
 annotations, class_names, class_dict, reverse_class_dict, labels_path = wandb_download_and_load_labels(wandb_run=run,
-                                                                                                       wandb_labels_artifact_name="food_not_food_annotations:latest")
+                                                                                                       wandb_labels_artifact_name="food_not_food_annotations:latest",
+                                                                                                       wandb_labels_artifact_type="annotations",
+                                                                                                       filename="food_not_food_annotations.csv",  # TODO: make this a changeable parameter?
+                                                                                                       class_name_col="class_name")
+
+labels_path = "artifacts/food_not_food_annotations:v0/food_not_food_annotations_updated.csv"
 
 # Setup class weights (for loss function)
 if args.use_class_weights:
@@ -379,11 +386,15 @@ def create_model(model_name=args.model,
 
     model = torchvision.models.efficientnet_b0(weights=weights)
 
-    # Set all parameters to not requiring gradients
-    for param in model.parameters():
-        param.requires_grad = False
+    # # Set all parameters to not requiring gradients
+    # for param in model.parameters():
+    #     param.requires_grad = False
 
     # Set the last layer to require gradients (fine-tune the last layer only)
+    model.classifier = nn.Sequential(
+        nn.Dropout(p=0.2, inplace=True),
+        nn.Linear(in_features=1280, out_features=num_classes, bias=True))
+    
     for param in model.classifier.parameters():
         param.requires_grad = True
 
@@ -402,7 +413,7 @@ from engine import test_step, train, train_step
 
 loss_fn = nn.CrossEntropyLoss(weight=class_weights_tensor if args.use_class_weights else None, 
                               label_smoothing=args.label_smoothing)
-optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
+optimizer = torch.optim.Adam(model.parameters(), lr=0.0001)
 
 # TODO: make a "validate every... epoch" for example could validate every 5 epochs or something
 
@@ -598,7 +609,7 @@ def save_model(model: torch.nn.Module, target_dir: str, model_name: str):
     """
     # Create target directory
     target_dir_path = Path(target_dir)
-    os.makedirs(exist_ok=True)
+    os.makedirs(target_dir_path, exist_ok=True)
 
     # Create model save path
     assert model_name.endswith(".pth") or model_name.endswith(
