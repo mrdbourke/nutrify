@@ -13,7 +13,7 @@ import yaml
 
 import pandas as pd
 
-from data_loader import FoodVisionReader
+from foodvision.data_loader_original import FoodVisionReader
 from pathlib import Path
 from timm.models import create_model
 from timm.data import create_transform, ImageDataset
