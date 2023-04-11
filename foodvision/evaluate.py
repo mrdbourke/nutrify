@@ -13,7 +13,7 @@ import yaml
 
 import pandas as pd
 
-from foodvision.data_loader_original import FoodVisionReader
+from data_loader import FoodVisionReader
 from pathlib import Path
 from timm.models import create_model
 from timm.data import create_transform, ImageDataset
@@ -239,26 +239,25 @@ print(f"[INFO] Model artifact directory: {model_at_dir}")
 model_path = str(list(Path(model_at_dir).rglob("*.pth"))[0])
 print(f"[INFO] Model path: {model_path}")
 
-# Create the model with timm
-model = timm.create_model(
-    model_name=args.model, pretrained=args.pretrained, num_classes=len(class_dict)
-)
+# Create the model
+from models import model_dict
 
-# Try an extra layer on top 
-num_classes = len(class_dict)
-in_features = model.head.fc.in_features
-model.head.fc = nn.Sequential(
-    nn.Linear(in_features=in_features, 
-                out_features=in_features),
-    nn.ReLU(),
-    nn.Dropout(p=0.2),
-    nn.Linear(in_features=in_features,
-                out_features=num_classes)
-)
+print(f"[INFO] Using model: {args.model}")
+model_func = model_dict[args.model]
+model, image_size = model_func(num_classes=len(class_names), 
+                               pretrained=args.pretrained)
 
 model.load_state_dict(torch.load(model_path))
 
 # Create the data transform
+if args.image_size != image_size:
+    IMAGE_SIZE = image_size
+    print(f"[INFO] Image size was set to {args.image_size} but the model requires {image_size}.")
+    print(f"[INFO] Using image size: {IMAGE_SIZE}")
+else:
+    IMAGE_SIZE = args.image_size
+    print(f"[INFO] Using image size: {IMAGE_SIZE}")
+
 transform = create_transform(input_size=args.image_size, is_training=False)
 
 # Add predictions to Google Storage

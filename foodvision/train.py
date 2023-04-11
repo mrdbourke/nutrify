@@ -324,8 +324,8 @@ from models import model_dict
 print(f"[INFO] Using model: {args.model}")
 model_func = model_dict[args.model]
 model, image_size = model_func(num_classes=len(class_names), 
-                   pretrained=args.pretrained, 
-                   train_body=args.train_body) # TODO: if train_body is setup, lower the default learning rate 10x
+                               pretrained=args.pretrained, 
+                               train_body=args.train_body)
 model.to(device)
 
 if args.image_size != image_size:
