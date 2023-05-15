@@ -261,6 +261,7 @@ else:
 if args.auto_augment:
     print(f"[INFO] Using auto augment, strategy: {args.auto_augment}")
     train_transform = create_transform(input_size=args.image_size, is_training=True, auto_augment="rand-m9-mstd0.5")
+    # TODO: could I add random erasing here?
 else:
     print("[INFO] Not using auto augment, normal image transformations will be used.")
     train_transform = create_transform(input_size=args.image_size, is_training=True)

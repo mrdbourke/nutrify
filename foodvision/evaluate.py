@@ -258,7 +258,8 @@ else:
     IMAGE_SIZE = args.image_size
     print(f"[INFO] Using image size: {IMAGE_SIZE}")
 
-transform = create_transform(input_size=args.image_size, is_training=False)
+transform = create_transform(input_size=IMAGE_SIZE, is_training=False)
+print(f"[INFO] Using transforms:\n{transform}")
 
 # Add predictions to Google Storage
 from utils import upload_to_gs

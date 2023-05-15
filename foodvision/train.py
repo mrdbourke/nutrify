@@ -11,8 +11,7 @@ Style guide: https://google.github.io/styleguide/pyguide.html
 import argparse
 import json
 import os
-from contextlib import \
-    suppress  # suppresses amp_autocast if it's not available
+from contextlib import suppress  # suppresses amp_autocast if it's not available
 from pathlib import Path
 from typing import Dict, List
 import yaml
@@ -31,19 +30,32 @@ from data_loader import FoodVisionReader
 
 # Connect to GCP
 from utils.gcp_utils import set_gcp_credentials, test_gcp_connection
+
 set_gcp_credentials(path_to_key="utils/google-storage-key.json")
 test_gcp_connection()
 
 # Create config parser
 config_parser = parser = argparse.ArgumentParser(description="Training config file")
-parser.add_argument("-c", "--config", default="configs.default_config", type=str, help="config file path (default: configs.default_config)")
+parser.add_argument(
+    "-c",
+    "--config",
+    default="configs.default_config",
+    type=str,
+    help="config file path (default: configs.default_config)",
+)
 
 # Create regular parser
 parser = argparse.ArgumentParser(description="Train a FoodVision model.")
 
 # Create dataset parameters
 group = parser.add_argument_group("Dataset parameters")
-group.add_argument("--polars_or_pandas", "-p", default="pandas", type=str, help="use pandas or polars to load DataFrame for DataLoader")
+group.add_argument(
+    "--polars_or_pandas",
+    "-p",
+    default="pandas",
+    type=str,
+    help="use pandas or polars to load DataFrame for DataLoader",
+)
 group.add_argument("--dataset", "-d", default="", type=str, help="dataset to use")
 group.add_argument(
     "--train_split", default="train", help="dataset train split (defailt: train)"
@@ -140,14 +152,14 @@ group.add_argument(
     "-cw",
     type=bool,
     default=False,
-    help="whether to use class weights in loss function (default: False)"
+    help="whether to use class weights in loss function (default: False)",
 )
 group.add_argument(
     "--train_body",
     "-tb",
     type=bool,
     default=False,
-    help="whether to train the body of the model (default: False)"
+    help="whether to train the body of the model (default: False)",
 )
 
 
@@ -183,8 +195,9 @@ group.add_argument(
 
 # Misc parameters
 group = parser.add_argument_group("Misc parameters")
-group.add_argument('--seed', type=int, default=42, metavar='S',
-                   help='random seed (default: 42)')
+group.add_argument(
+    "--seed", type=int, default=42, metavar="S", help="random seed (default: 42)"
+)
 group.add_argument(
     "--output",
     default="",
@@ -207,7 +220,7 @@ group.add_argument(
 
 
 # See: https://github.com/rwightman/pytorch-image-models/blob/3aa31f537d5fbf6be8f1aaf5a36f6bbb4a55a726/train.py#L352
-# See here: https://docs.python.org/3/library/argparse.html#partial-parsing 
+# See here: https://docs.python.org/3/library/argparse.html#partial-parsing
 def _parse_args():
     """Parses command line arguments.
 
@@ -217,13 +230,14 @@ def _parse_args():
 
     See:
     - https://github.com/rwightman/pytorch-image-models/blob/3aa31f537d5fbf6be8f1aaf5a36f6bbb4a55a726/train.py#L352
-    - https://docs.python.org/3/library/argparse.html#partial-parsing 
+    - https://docs.python.org/3/library/argparse.html#partial-parsing
     """
     config_args, remaining = config_parser.parse_known_args()
 
     # Parse config file
     if config_args.config:
         from importlib import import_module
+
         # See here: https://stackoverflow.com/a/67692/12434862
         # This is equivalent to: from configs.default_config import config
         config_module = getattr(import_module(config_args.config), "config")
@@ -266,6 +280,7 @@ else:
 
 # Set seeds
 from utils import seed_everything
+
 seed_everything(args.seed)
 
 ### Setup Artifacts ###
@@ -275,7 +290,7 @@ seed_everything(args.seed)
 run = wandb.init(
     project=args.wandb_project,
     job_type=args.wandb_job_type,
-    tags=["training"], # TODO set this on args
+    tags=["training"],  # TODO set this on args
     notes=args.wandb_run_notes,
 )
 
@@ -284,26 +299,34 @@ wandb.config.update(args)
 
 from utils.wandb_utils import wandb_load_artifact, wandb_download_and_load_labels
 
-run = wandb.init(project=args.wandb_project, 
-                 job_type=args.wandb_job_type,
-                 tags=args.wandb_run_tags,
-                 notes=args.wandb_run_notes)
+run = wandb.init(
+    project=args.wandb_project,
+    job_type=args.wandb_job_type,
+    tags=args.wandb_run_tags,
+    notes=args.wandb_run_notes,
+)
 
 images_dir = wandb_load_artifact(
-    wandb_run=run, 
-    artifact_name=args.wandb_dataset_artifact, 
-    artifact_type="dataset")
+    wandb_run=run, artifact_name=args.wandb_dataset_artifact, artifact_type="dataset"
+)
 
 print(f"[INFO] Images directory: {images_dir}")
 
-annotations, class_names, class_dict, reverse_class_dict, labels_path = wandb_download_and_load_labels(wandb_run=run,
-wandb_labels_artifact_name=args.wandb_labels_artifact)
+(
+    annotations,
+    class_names,
+    class_dict,
+    reverse_class_dict,
+    labels_path,
+) = wandb_download_and_load_labels(
+    wandb_run=run, wandb_labels_artifact_name=args.wandb_labels_artifact
+)
 
 # Setup class weights (for loss function)
 if args.use_class_weights:
     print("[INFO] Using class weights (for adjusting loss function)")
     class_counts = np.bincount(annotations.label)
-    class_weights = {i: 1. / count for i, count in enumerate(class_counts)}
+    class_weights = {i: 1.0 / count for i, count in enumerate(class_counts)}
     class_weights_tensor = torch.Tensor(list(class_weights.values())).to(device)
 else:
     print("[INFO] Not using class weights (for adjusting loss function)")
@@ -323,14 +346,16 @@ from models import model_dict
 
 print(f"[INFO] Using model: {args.model}")
 model_func = model_dict[args.model]
-model, image_size = model_func(num_classes=len(class_names), 
-                               pretrained=args.pretrained, 
-                               train_body=args.train_body)
+model, image_size = model_func(
+    num_classes=len(class_names), pretrained=args.pretrained, train_body=args.train_body
+)
 model.to(device)
 
 if args.image_size != image_size:
     IMAGE_SIZE = image_size
-    print(f"[INFO] Image size was set to {args.image_size} but the model requires {image_size}.")
+    print(
+        f"[INFO] Image size was set to {args.image_size} but the model requires {image_size}."
+    )
     print(f"[INFO] Using image size: {IMAGE_SIZE}")
 else:
     IMAGE_SIZE = args.image_size
@@ -339,18 +364,18 @@ else:
 # Create datasets and transforms
 if args.auto_augment:
     print(f"[INFO] Using auto augment, strategy: {args.auto_augment}")
-    train_transform = create_transform(input_size=IMAGE_SIZE, 
-                                       is_training=True, 
-                                       auto_augment="rand-m9-mstd0.5")
+    train_transform = create_transform(
+        input_size=IMAGE_SIZE, is_training=True, auto_augment="rand-m9-mstd0.5"
+    )
 else:
     print("[INFO] Not using auto augment, normal image transformations will be used.")
-    train_transform = create_transform(input_size=IMAGE_SIZE, 
-                                       is_training=True)
+    train_transform = create_transform(input_size=IMAGE_SIZE, is_training=True)
 
 # TODO: maybe a good idea to print out how many samples are in each dataset?
 polars_or_pandas = args.polars_or_pandas
 if polars_or_pandas == "polars":
     from data_loader import FoodVisionReaderPolars
+
     print("[INFO] Using Polars for DataFrame Loading")
     FoodVisionReader = FoodVisionReaderPolars
 else:
@@ -359,8 +384,11 @@ else:
 train_dataset = ImageDataset(
     root=str(images_dir),
     reader=FoodVisionReader(
-        images_dir, labels_path, class_to_idx=class_dict, split="train",
-        quick_experiment=args.quick_experiment
+        images_dir,
+        labels_path,
+        class_to_idx=class_dict,
+        split="train",
+        quick_experiment=args.quick_experiment,
     ),
     # parser=FoodVisionReader(
     #     images_dir, labels_path, class_to_idx=class_dict, split="train",
@@ -372,15 +400,17 @@ train_dataset = ImageDataset(
 test_dataset = ImageDataset(
     root=str(images_dir),
     reader=FoodVisionReader(
-        images_dir, labels_path, class_to_idx=class_dict, split="test",
-        quick_experiment=args.quick_experiment
+        images_dir,
+        labels_path,
+        class_to_idx=class_dict,
+        split="test",
+        quick_experiment=args.quick_experiment,
     ),
     # parser=FoodVisionReader(
     #     images_dir, labels_path, class_to_idx=class_dict, split="test",
     #     quick_experiment=args.quick_experiment
     # ),
-    transform=create_transform(input_size=IMAGE_SIZE, 
-                               is_training=False),
+    transform=create_transform(input_size=IMAGE_SIZE, is_training=False),
 )
 
 # Create DataLoaders
@@ -396,13 +426,19 @@ print(f"[INFO] Using pin memory: {PIN_MEMORY}")
 
 # TODO: make a sampler that samples X random samples from the dataset rather than the whole thing (for faster experimentation)
 train_dataloader = DataLoader(
-    train_dataset, batch_size=BATCH_SIZE, shuffle=True, num_workers=NUM_WORKERS,
-    pin_memory=PIN_MEMORY
+    train_dataset,
+    batch_size=BATCH_SIZE,
+    shuffle=True,
+    num_workers=NUM_WORKERS,
+    pin_memory=PIN_MEMORY,
 )
 
 test_dataloader = DataLoader(
-    test_dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=NUM_WORKERS,
-    pin_memory=PIN_MEMORY
+    test_dataset,
+    batch_size=BATCH_SIZE,
+    shuffle=False,
+    num_workers=NUM_WORKERS,
+    pin_memory=PIN_MEMORY,
 )
 
 # TODO: fix this setup and have optimizers in the config/argparse
@@ -413,15 +449,26 @@ from tqdm.auto import tqdm
 # TODO: fix engine script to work right within this script
 from engine import test_step, train, train_step
 
-loss_fn = nn.CrossEntropyLoss(weight=class_weights_tensor if args.use_class_weights else None, 
-                              label_smoothing=args.label_smoothing)
+loss_fn = nn.CrossEntropyLoss(
+    weight=class_weights_tensor if args.use_class_weights else None,
+    label_smoothing=args.label_smoothing,
+)
 
 if args.train_body:
     lr = args.learning_rate / 10
-    print(f"[INFO] Training body of model set to {args.train_body}, setting learning rate to {lr} (previous lr: {args.learning_rate})")
-    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+    print(
+        f"[INFO] Training body of model set to {args.train_body}, setting learning rate to {lr} (previous lr: {args.learning_rate})"
+    )
+    # optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+    # optimizer = torch.optim.SGD(model.parameters(),
+    #                             lr=lr,
+    #                             momentum=0.9,
+    #                             weight_decay=2e-05)
+    optimizer = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=2e-05)
 else:
-    print(f"[INFO] Model body training set to {args.train_body}, setting learning rate to {args.learning_rate}")
+    print(
+        f"[INFO] Model body training set to {args.train_body}, setting learning rate to {args.learning_rate}"
+    )
     optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
 
 
@@ -660,7 +707,7 @@ model_gcs_path = upload_to_gs(
 
 # TODO: Add the reference model log file from GCP to W&B Artifacts
 # TODO: Could add this W&B model registry as well?
-# TODO: move this wandb utils 
+# TODO: move this wandb utils
 def log_model_artifact_to_wandb(model_path, project=args.wandb_project, run=run):
     """Logs a model to Weights & Biases as an artifact."""
     print(f"[INFO] Logging model to Weights & Biases...")
@@ -683,6 +730,7 @@ def log_model_artifact_to_wandb(model_path, project=args.wandb_project, run=run)
     # Log the artifact to W&B
     # run = wandb.init(project=project)
     run.log_artifact(model_artifact)
+
 
 # Get model_save_path file size in MB
 model_save_path_size_in_mb = model_save_path.stat().st_size / 1e6
