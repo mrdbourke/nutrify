@@ -84,6 +84,22 @@ function getImage() {
     reader.readAsDataURL(file);
 }
 
+
+// prevent default behaviour of browser opening image
+
+const dropArea = document.getElementById('drop-area')
+
+dropArea.addEventListener('dragover', function(e){
+    e.preventDefault();
+})
+
+dropArea.addEventListener('drop', function(e){
+    e.preventDefault();
+    fileInput.files[0] = e.dataTransfer.files;
+
+})
+
+
 // Add listener to see if someone uploads an image
 fileInput.addEventListener("change", getImage);
 uploadButton.addEventListener("click", () => fileInput.click());
@@ -200,3 +216,5 @@ function foodNotFood(model, image) {
         return false
     }
 }
+
+

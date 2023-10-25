@@ -5,6 +5,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Nutrify</title>
+    <link rel="stylesheet" href="style.css">
 
     <script type="module" src="supabaseClient.js"></script>
     <script type="module" src="constants.js"></script>
@@ -16,29 +17,52 @@
 </head>
 
 <body>
-    <h1>Nutrify: take a photo of food and learn about it.</h1>
-    <p><b>Note:</b> Nutrify is a work in progress. iOS app coming soon. <a href="https://forms.gle/8ye134pvgEKWJQHd6">Sign up</a> for updates.</p>
-    <p>Try taking or uploading a photo of food and find out its macronutrients.</p>
+    <h1>Nutrify</h1>
+    <h1 class="hero-head">Take a <span>Photo of Food</span> and learn about it.</h1>
+    <p class="hero-paragraph"><b>Note:</b> Nutrify is a work in progress. iOS app coming soon. <a href="https://forms.gle/8ye134pvgEKWJQHd6">Sign up</a> for updates.</p> <br>
+    <p class="vice-paragraph">Try taking or uploading a photo of food and find out its macronutrients.</p>
 
-    <button id="upload-button">
-        <span>Upload Image</span>
-    </button>
-    <p>
-        <input type="file" style="display: none" accept="image/*" name="image" id="file-input" />
-    </p>
+    <div id="drop-area-container">
+        <div id="drop-area">
+            <div id="upload-area">
+                <button id="upload-button">
+                    <span>Upload Image</span>
+                </button>
+                <p class="alternative">Or Drag and drop <br> an image here<span>Upload an image from library</span></p>               
+            </div>
+            <input type="file" style="display: none;" accept="image/*" name="image" id="file-input" />
+        </div>
+    </div>
+    <div id="sample">
+        <div class="samples">
+            <div>
+                <p>No image? Try one of these:</p>
+            </div>
+            
+            <div class="image-container">
+                <img src="images/sample-food-images/steak.jpeg" class="sample-image" id="sample1" alt="">
+                <img src="images/sample-food-images/sushi.jpeg" class="sample-image" id="sample2" alt="">
+                <img src="images/sample-food-images/ramen.jpeg" class="sample-image" id="sample3" alt="">
+                <img src="images/sample-food-images/pizza-dad.jpeg" class="sample-image" id="sample4" alt="">
+            </div>
+        </div>
+    </div>
+
     <p><img id="image" width="200" /></p>
 
-    <p>Predicted food: <span id="predicted_class"></span></p>
-    <!-- <p>Predicted probability:</p>
-    <p id="predicted_prob"></p> -->
+    <div id="results">
+        <p id="predicted">Predicted food: <span id="predicted_class"></span></p>
+        <!-- <p>Predicted probability:</p>
+        <p id="predicted_prob"></p> -->
 
-    <p>Macronutrients per 100g:</p>
-    <ul>
-        <li>protein: <span id="protein_amount"></span></li>
-        <li>carbohydrates: <span id="carbohydrate_amount"></span></li>
-        <li>fats: <span id="fat_amount"></span></li>
-    </ul>
-    <p>Time taken: <span id="time_taken"></span></p>
+        <p>Macronutrients per 100g:</p>
+        <ul id="results-list">
+            <li>Protein: <span id="protein_amount"></span></li>
+            <li>Carbohydrates: <span id="carbohydrate_amount"></span></li>
+            <li>Fats: <span id="fat_amount"></span></li>
+        </ul>
+        <p id="time-used" >Time taken: <span id="time_taken"></span></p>
+    </div>
 
     <!-- "Is this correct?" buttons (these start hidden but get updated when necessary)  -->
     <p id="is_this_correct" hidden>Is this correct?</p>
@@ -49,31 +73,45 @@
     <p id="thank_you_message" hidden>Thank you for your feedback.</p>
 
     <!-- Information about Nutrify beyond this line. -->
-    <h2>What is Nutrify?</h2>
-    <p>Nutrify's goal is to enable you to take a photo of what you're eating, about to eat or food you see in a store
-        and learn about it.</p>
-    <p>That could mean calories, nutrients, where the food comes, what it goes with, how long its been around for, where
-        it's native, etc.</p>
-    <p>A Pokédex for food!</p>
-    <p>To start, we're keeping it simple. Whole foods only. </p>
-    <p></p>For example, a banana or carrot or egg rather than a dish like
-    chicken curry.</p>
+    <div class="info-sect">
+        <div class="info-head">
+            <h2>What is Nutrify?</h2>
+        </div>
+        <div class="info-content">
+            <p>
+            Nutrify's goal is to enable you to take a photo of what you're eating, about to eat or food you see in a store and learn about it. <br>
+            That could mean calories, nutrients, where the food comes, what it goes with, how long its been around for, where it's native, etc. <br>
+            A Pokédex for food!.
+            To start, we're keeping it simple. Whole foods only, for example, a banana or carrot or egg rather than a dish like chicken curry.
+            </p>
+        </div>
+    </div>
 
-    <h2>Help build</h2>
-    <p>Building the vision models will likely take a fair amount of labelled images of food (currently being sourced).
-    </p>
-    <p>But if you'd like to help, you can <a
-            href="https://share.streamlit.io/mrdbourke/nutrify/main/food_image_collector.py">upload an image of
-            food</a>.</p>
+    <div class="info-sect">
+        <div class="info-head"><h2>Help build</h2></div>
+        <div class="info-content">
+            <p>Building the vision models will likely take a fair amount of labelled images of food (currently being sourced).</p>
+            <p class="contribute">
+                But if you'd like to help, you can <a href="https://share.streamlit.io/mrdbourke/nutrify/main/food_image_collector.py">
+                    upload an image of food
+                </a>
+            </p>
+        </div>
+    </div>
 
-    <h2>Updates</h2>
-    <ul>
-        <li>17 Jan 2023 - Started creating a data engine to make the model better, see the <a href="https://www.mrdbourke.com/copying-teslas-data-engine-for-food-images">blog post</a>/<a href="https://youtu.be/02b-1spzLzc">video update</a></li>
-        <li><a href="https://github.com/mrdbourke/nutrify/discussions/33">14 Mar 2022</a> - Added queries to a Supabase
-            database to showcase macronutrients for each food</li>
-        <li><a href="https://github.com/mrdbourke/nutrify/discussions/32">14 Jan 2022</a> - 78 -> 100 foods identifiable
-        </li>
-    </ul>
+    <div class="update-sect">
+        <div class="update-head"><h2>Updates</h2></div>
+        <div class="update-content">
+            <ul>
+                <li>17 Jan 2023 - Started creating a data engine to make the model better, see the <a href="https://www.mrdbourke.com/copying-teslas-data-engine-for-food-images">blog post</a>/<a href="https://youtu.be/02b-1spzLzc">video update</a></li>
+                <li><a href="https://github.com/mrdbourke/nutrify/discussions/33">14 Mar 2022</a> - Added queries to a Supabase
+                    database to showcase macronutrients for each food</li>
+                <li><a href="https://github.com/mrdbourke/nutrify/discussions/32">14 Jan 2022</a> - 78 -> 100 foods identifiable
+                </li>
+            </ul>
+        </div>
+    </div>
+
     <p>See the <a href="https://github.com/mrdbourke/nutrify">GitHub</a> for development stages and code.</p>
     <p>Watch the live development on <a href="https://www.twitch.tv/mrdbourke">Twitch</a> and <a
             href="https://youtube.com/playlist?list=PL8IpyNZ21vUTOJR1vKEBvqQaYmu7FErgc"> replays on YouTube</a>.</p>
